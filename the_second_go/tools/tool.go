@@ -138,5 +138,3 @@ func ExecCommand(command string, args ...string) error {
 	}
 	return nil
 }
-
-// 获取GPU信息
