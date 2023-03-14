@@ -1,13 +1,9 @@
-# base image
-FROM ubuntu:18.04
-# MAINTAINER
 
-# 安装相应依赖
 RUN apt-get update
 RUN apt-get install wget curl vim gcc zlib1g-dev bzip2 -y
 RUN apt-get install zlib1g.dev
 RUN apt-get install openssl libssl1.0-dev -y 
 RUN apt-get install g++ build-essential -y 
 RUN mkdir /usr/local/source 
-# 设置工作目录
+
 WORKDIR /usr/local/source
