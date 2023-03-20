@@ -1,15 +1,17 @@
 package main
 
 import (
+	"flag"
 	"the_second_go/controller"
-	"the_second_go/tools"
 
 	"github.com/gin-gonic/gin"
+	"github.com/golang/glog"
 )
 
 func main() {
-	// 初始化Kubernetes客户端
-	kubeClient, err_k8s := tools.InitK8S()
+	// 启动glog
+	flag.Parse()
+	defer glog.Flush()
 
 	// 初始化Gin框架
 	router := gin.Default()
@@ -31,5 +33,7 @@ func main() {
 
 	// 创建Pod
 	router.POST("/pod", controller.CreatePod)
+
+	// 获取训练模型的损失值和正确率
 
 }
