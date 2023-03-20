@@ -17,11 +17,6 @@ type Operation struct {
 func OperationInfo(c *gin.Context) {
 	list := []Operation{
 		Operation{
-			"/image",
-			"dstpath, osversion, pyversion, imagearray, imagename",
-			"创建镜像",
-		},
-		Operation{
 			"/regoster",
 			"username, password, permission, workpath",
 			"注册账号",
@@ -35,6 +30,21 @@ func OperationInfo(c *gin.Context) {
 			"/search_dir",
 			"dir_name, depth",
 			"查询目录存储",
+		},
+		Operation{
+			"/image",
+			"dstpath, osversion, pyversion, imagearray, imagename",
+			"创建镜像",
+		},
+		Operation{
+			"/pod",
+			"podname, container_name, memeory, cpu, etc",
+			"创建容器",
+		},
+		Operation{
+			"/data",
+			"",
+			"模型训练的损失值和正确率",
 		},
 	}
 

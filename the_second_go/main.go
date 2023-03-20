@@ -35,5 +35,5 @@ func main() {
 	router.POST("/pod", controller.CreatePod)
 
 	// 获取训练模型的损失值和正确率
-
+	router.POST("/data", controller.GetData)
 }
