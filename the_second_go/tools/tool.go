@@ -3,10 +3,12 @@ package tools
 import (
 	"bufio"
 	"context"
+	"flag"
 	"io"
 	"io/ioutil"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"runtime"
 
 	"github.com/NVIDIA/gpu-monitoring-tools/bindings/go/nvml"
@@ -14,7 +16,8 @@ import (
 	"github.com/golang/glog"
 	"github.com/shirou/gopsutil/mem"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/clientcmd"
+	"k8s.io/client-go/util/homedir"
 )
 
 // 初始化Docker客户端
@@ -37,22 +40,29 @@ func InitDocker() (*client.Client, error) {
 
 // 初始化Kubernetes客户端
 func InitK8S() (*kubernetes.Clientset, error) {
-	// 加载kubeconfog
-	kubeConfig, err_config := rest.InClusterConfig()
+	var kubeconfig *string
+	if home := homedir.HomeDir(); home != "" {
+		kubeconfig = flag.String("kubeconfig", filepath.Join(home, ".kube", "config"), "(optional) absolute path to the kubeconfig file")
+	} else {
+		kubeconfig = flag.String("kubeconfig", "", "absolute path to the kubeconfig file")
+	}
+	flag.Parse()
+
+	// 使用kubeconfig中的当前上下文,加载配置文件
+	config, err_config := clientcmd.BuildConfigFromFlags("", *kubeconfig)
 	if err_config != nil {
-		glog.Error("Failed to get kubeconfig, the error is %s", err_config)
+		glog.Error("Failed to use load kubeconfig, the error is %s ", err_config)
 		return nil, err_config
 	}
 
-	// 创建k8s客户端
-	kubeClient, err_client := kubernetes.NewForConfig(kubeConfig)
+	// 创建clientset
+	clientset, err_client := kubernetes.NewForConfig(config)
 	if err_client != nil {
-		glog.Error("Failed to init kubeClient, the error is %s", err_client)
+		glog.Error("Failed to create clientset, the error is %s ", err_client)
 		return nil, err_client
 	}
 
-	glog.Info("Succeed to init kubeClient")
-	return kubeClient, nil
+	return clientset, nil
 }
 
 // 获取内存和GPU
