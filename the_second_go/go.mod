@@ -14,6 +14,7 @@ require (
 require google.golang.org/genproto v0.0.0-20230110181048-76db0878b65f // indirect
 
 require (
+	github.com/Applifier/go-tensorflow v0.0.0-20201216151200-018471a24002
 	github.com/Microsoft/go-winio v0.6.0 // indirect
 	github.com/NVIDIA/gpu-monitoring-tools v0.0.0-20211102125545-5a2c58442e48
 	github.com/bytedance/sonic v1.8.0 // indirect
