@@ -4,12 +4,16 @@ import (
 	"bufio"
 	"context"
 	"flag"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"sort"
+	"strconv"
+	"strings"
 
 	"github.com/NVIDIA/gpu-monitoring-tools/bindings/go/nvml"
 	"github.com/docker/docker/client"
@@ -206,6 +210,81 @@ func CreatePath(dirpath string, perm os.FileMode) error {
 	if err_mk != nil {
 		glog.Error("Failed to create user path %s, the error is %s", dirpath, err_mk)
 		return err_mk
+	}
+	return nil
+}
+
+// float32 to string
+func FloatToString(input_num float32) string {
+	// to convert a float number to a string
+	return strconv.FormatFloat(float64(input_num), 'f', 6, 64)
+}
+
+// 从字符串中提取最后的数字
+func extractNumber(s string) int {
+	parts := strings.Split(s, "_")
+	n, err := strconv.Atoi(parts[len(parts)-1])
+	if err != nil {
+		return 0
+	}
+	return n
+}
+
+// read data and cacculate their average
+func CalculateAvg(filepath string) error {
+	// 打开输入文件
+	f, err := os.Open(filepath)
+	if err != nil {
+		glog.Error("Failed to open file, the error is ", err.Error())
+		return err
+	}
+	defer f.Close()
+
+	numValue := make(map[string][]float64)
+	scanner := bufio.NewScanner(f)
+	for scanner.Scan() {
+		line := scanner.Text()
+
+		fields := strings.Fields(line)
+		epoch := fields[0]
+		value, err := strconv.ParseFloat(fields[1], 64)
+		if err != nil {
+			panic(err)
+		}
+
+		// 将售价添加到 map 中
+		numValue[epoch] = append(numValue[epoch], value)
+	}
+
+	averages := make(map[string]float64)
+	for e, v := range numValue {
+		var total float64
+		for _, price := range v {
+			total += price
+		}
+		averages[e] = total / float64(len(v))
+	}
+
+	sortedItems := make([]string, 0, len(averages))
+	for e := range averages {
+		sortedItems = append(sortedItems, e)
+	}
+	sort.Slice(sortedItems, func(i, j int) bool {
+		return extractNumber(sortedItems[i]) < extractNumber(sortedItems[j])
+	})
+
+	// 打开输出文件
+	outputFile, err := os.Create(filepath)
+	if err != nil {
+		glog.Error("Failed to open output file, the error is ", err.Error())
+		return err
+	}
+	defer outputFile.Close()
+
+	// 将每个物品和其平均售价写入输出文件
+	for _, epoch := range sortedItems {
+		average := averages[epoch]
+		fmt.Fprintf(outputFile, "%s %.10f\n", epoch, average)
 	}
 	return nil
 }
