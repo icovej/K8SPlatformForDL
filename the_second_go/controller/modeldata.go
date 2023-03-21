@@ -5,8 +5,13 @@ import (
 	"encoding/binary"
 	"hash/crc32"
 	"io"
+	"net/http"
+	"os"
+	"strings"
+	"the_second_go/tools"
 
 	"github.com/gin-gonic/gin"
+	"github.com/golang/glog"
 	"github.com/pkg/errors"
 
 	"github.com/Applifier/go-tensorflow/types/tensorflow/core/util"
@@ -15,8 +20,15 @@ import (
 const (
 	maskDelta = 0xa282ead8
 
-	headerSize = 12
-	footerSize = 4
+	headerSize  = 12
+	footerSize  = 4
+	testPrefix  = "test_loss"
+	trainPrefix = "train_loss"
+	accuracy    = "test_accuracy"
+
+	testLossFile  = "test_loss_all.txt"
+	trainLossFile = "train_loss_all.txt"
+	accFile       = "acc.txt"
 )
 
 var crc32c = crc32.MakeTable(crc32.Castagnoli)
@@ -28,6 +40,10 @@ var ErrInvalidChecksum = errors.New("invalid crc")
 type Reader struct {
 	r   io.Reader
 	buf *bytes.Buffer
+}
+
+type EVData struct {
+	Logdir string `json:"logdir"`
 }
 
 func NewReader(r io.Reader) *Reader {
@@ -88,5 +104,83 @@ func verifyChecksum(data []byte, crcMasked uint32) bool {
 }
 
 func GetData(c *gin.Context) {
+	var evdata EVData
+	err_bind := c.ShouldBindJSON(&evdata)
+	if err_bind != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err_bind.Error()})
+		glog.Error("Failed to parse data form request, the error is %s", err_bind)
+		return
+	}
+
+	testfile := evdata.Logdir
+	f, err_open := os.Open(testfile)
+	if err_open != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err_open.Error()})
+		glog.Error("Failed to open log dir, the error is ", err_open.Error())
+		return
+	}
+	defer f.Close()
+
+	r := NewReader(f)
+	events := make([]*util.Event, 0, 99)
+
+	for {
+		ev, err := r.Next()
+		if err != nil {
+			if err == io.EOF {
+				break
+			} else if err != nil {
+				glog.Error("Failed to read event file, the error is ", err.Error())
+			}
+		}
+		events = append(events, ev)
+	}
+
+	test_loss, _ := os.Create(testLossFile)
+	defer test_loss.Close()
+
+	train_loss, _ := os.Create(trainLossFile)
+	defer train_loss.Close()
+
+	acc, _ := os.Create(accFile)
+	defer acc.Close()
+
+	for i := range events {
+		s := events[i].GetSummary()
+		if s != nil {
+			for j := range s.Value {
+				tag := s.Value[j].Tag
+				if strings.HasPrefix(tag, testPrefix) {
+					_, err := test_loss.WriteString(tag + " " + tools.FloatToString(s.Value[j].GetSimpleValue()) + "\n")
+					if err != nil {
+						glog.Error("Failed to get test loss value from event, the error is ", err.Error())
+					}
+				} else if strings.HasPrefix(tag, trainPrefix) {
+					_, err := train_loss.WriteString(tag + " " + tools.FloatToString(s.Value[j].GetSimpleValue()) + "\n")
+					if err != nil {
+						glog.Error("Failed to get train loss value from event, the error is ", err.Error())
+					}
+				} else if strings.HasPrefix(tag, accuracy) {
+					_, err := acc.WriteString(tag + " " + tools.FloatToString(s.Value[j].GetSimpleValue()) + "\n")
+					if err != nil {
+						glog.Error("Failed to get acc value from event, the error is ", err.Error())
+					}
+				}
+			}
+		}
+	}
+
+	err := tools.CalculateAvg(testLossFile)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		glog.Error("Failed to calculate test loss avg, the err is ", err.Error())
+		return
+	}
+	err = tools.CalculateAvg(trainLossFile)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		glog.Error("Failed to calculate train loss avg, the err is ", err.Error())
+		return
+	}
 
 }

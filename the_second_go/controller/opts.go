@@ -43,7 +43,7 @@ func OperationInfo(c *gin.Context) {
 		},
 		Operation{
 			"/data",
-			"",
+			"logdir",
 			"模型训练的损失值和正确率",
 		},
 	}
