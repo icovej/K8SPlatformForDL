@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login</title>
+</head>
+
+<body>
+    <form action="/register" method="post">
+        用户名称：<input type="text" name="username"> <br>
+        密码：<input type="password" name="password"> <br>
+
+        <button type="button" onclick="register()">Login</button>
+
+    </form>
+    <script>
+        function login() {
+            const username = document.getElementsByName("username").value;
+            const password = document.getElementsByTagName("password").value;
+
+            fetch("http://localhost:8080/login", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ username, password }),
+            })
+                .then((response) => response.json())
+                .then((data) => {
+                    console.log(data);
+                    const { token } = data;
+                    localStorage.setItem("token", token);
+                    alert("Register success");
+                    window.location.href = "profile.html";
+                })
+                .catch((error) => {
+                    console.error("Error:", error);
+                    alert("Register failed");
+                });
+        }
+    </script>
+</body>
+
+</html>

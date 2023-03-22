@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -17,6 +18,7 @@ import (
 
 	"github.com/NVIDIA/gpu-monitoring-tools/bindings/go/nvml"
 	"github.com/docker/docker/client"
+	"github.com/gin-gonic/gin"
 	"github.com/golang/glog"
 	"github.com/shirou/gopsutil/mem"
 	"k8s.io/client-go/kubernetes"
@@ -287,4 +289,21 @@ func CalculateAvg(filepath string) error {
 		fmt.Fprintf(outputFile, "%s %.10f\n", epoch, average)
 	}
 	return nil
+}
+
+func Core() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		method := c.Request.Method
+		c.Header("Access-Control-Allow-Origin", "*")
+		c.Header("Access-Control-Allow-Headers", "Content-Type,AccessToken,X-CSRF-Token,Authorization,Token")
+		c.Header("Access-Control-Allow-Methods", "POST,GET,OPTIONS")
+		c.Header("Access-Control-Expose-Headers", "Content-Length,Access-Control-Allow-Origin,Access-Control-Allow-Headers,Content-Type")
+		c.Header("Access-Control-Allow-Credentials", "True")
+		//放行索引options
+		if method == "OPTIONS" {
+			c.AbortWithStatus(http.StatusNoContent)
+		}
+		//处理请求
+		c.Next()
+	}
 }

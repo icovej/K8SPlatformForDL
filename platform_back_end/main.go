@@ -2,7 +2,8 @@ package main
 
 import (
 	"flag"
-	"the_second_go/controller"
+	"platform_back_end/controller"
+	"platform_back_end/tools"
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang/glog"
@@ -15,6 +16,7 @@ func main() {
 
 	// 初始化Gin框架
 	router := gin.Default()
+	router.Use(tools.Core())
 
 	// 获取api操作信息
 	router.GET("/operation", controller.OperationInfo)
