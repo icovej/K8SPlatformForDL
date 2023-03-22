@@ -1,0 +1,20 @@
+[
+    {
+        "username": "asd",
+        "password": "123456",
+        "role": "users",
+        "path": "/Users/jiangyiming/Desktop"
+    },
+    {
+        "username": "asda",
+        "password": "123456",
+        "role": "admin",
+        "path": "/Users/jiangyiming/Desktop"
+    },
+    {
+        "username": "a213412sda",
+        "password": "123456",
+        "role": "users",
+        "path": "/Users/jiangyiming/Desktop"
+    }
+]

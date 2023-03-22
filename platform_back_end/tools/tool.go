@@ -254,7 +254,6 @@ func CalculateAvg(filepath string) error {
 			panic(err)
 		}
 
-		// 将售价添加到 map 中
 		numValue[epoch] = append(numValue[epoch], value)
 	}
 
@@ -283,7 +282,6 @@ func CalculateAvg(filepath string) error {
 	}
 	defer outputFile.Close()
 
-	// 将每个物品和其平均售价写入输出文件
 	for _, epoch := range sortedItems {
 		average := averages[epoch]
 		fmt.Fprintf(outputFile, "%s %.10f\n", epoch, average)

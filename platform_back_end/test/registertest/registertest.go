@@ -1,7 +1,8 @@
-package controller
+package main
 
 import (
 	"encoding/json"
+	"flag"
 	"io/ioutil"
 	"net/http"
 
@@ -27,7 +28,7 @@ func RegisterHandler(c *gin.Context) {
 	}
 
 	// 检查账号是否已经被注册
-	users, err_check := checkUsers()
+	users, err_check := readUsers()
 	if err_check != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to read users file"})
 		glog.Error("Failed to read users file!")
@@ -53,7 +54,7 @@ func RegisterHandler(c *gin.Context) {
 
 	if user.Role != "admin" {
 		if user.Path == "" {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "User's path is nil"})
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "path is nil"})
 			glog.Error("User's path is nil!")
 			return
 		}
@@ -71,9 +72,9 @@ func RegisterHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "register success"})
 }
 
-func checkUsers() ([]NormalUser, error) {
+func readUsers() ([]NormalUser, error) {
 	// 从文件中读取用户信息
-	data, err := ioutil.ReadFile("")
+	data, err := ioutil.ReadFile("/Users/jiangyiming/Desktop/k8s_bishe/platform_back_end/test/registertest/users.json")
 	if err != nil {
 		return nil, err
 	}
@@ -99,10 +100,38 @@ func writeUsers(users []NormalUser) error {
 	}
 
 	// 将JSON数据写入文件
-	err = ioutil.WriteFile("", data, 0644)
+	err = ioutil.WriteFile("/Users/jiangyiming/Desktop/k8s_bishe/platform_back_end/test/registertest/users.json", data, 0644)
 	if err != nil {
 		return err
 	}
 
 	return nil
+}
+
+func Core() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		method := c.Request.Method
+		c.Header("Access-Control-Allow-Origin", "*")
+		c.Header("Access-Control-Allow-Headers", "Content-Type,AccessToken,X-CSRF-Token,Authorization,Token")
+		c.Header("Access-Control-Allow-Methods", "POST,GET,OPTIONS")
+		c.Header("Access-Control-Expose-Headers", "Content-Length,Access-Control-Allow-Origin,Access-Control-Allow-Headers,Content-Type")
+		c.Header("Access-Control-Allow-Credentials", "True")
+		//放行索引options
+		if method == "OPTIONS" {
+			c.AbortWithStatus(http.StatusNoContent)
+		}
+		//处理请求
+		c.Next()
+	}
+}
+
+func main() {
+	// 启动glog
+	flag.Parse()
+	defer glog.Flush()
+	router := gin.Default()
+	router.Use(Core())
+	router.POST("/register", RegisterHandler)
+
+	router.Run(":8080")
 }

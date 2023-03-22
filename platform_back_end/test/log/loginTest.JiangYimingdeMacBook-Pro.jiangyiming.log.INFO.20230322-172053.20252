@@ -1,0 +1,6 @@
+Log file created at: 2023/03/22 17:20:53
+Running on machine: JiangYimingdeMacBook-Pro
+Binary: Built with gc go1.19.2 for darwin/arm64
+Previous log: <none>
+Log line format: [IWEF]mmdd hh:mm:ss.uuuuuu threadid file:line] msg
+I0322 17:20:53.681005   20252 loginTest.go:93] eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6ImFzZCIsInJvbGUiOiJ1c2VycyIsInBhdGgiOiIvVXNlcnMvamlhbmd5aW1pbmcvRGVza3RvcCIsImV4cCI6MTY4MDA4MTY1MywiaXNzIjoibmV3dG9rZW4iLCJuYmYiOjE2Nzk0NzU4NTN9.bCGEnuDzbdB1b77Enou3thY5p-GfNX8A9mMEi_mkXyQ

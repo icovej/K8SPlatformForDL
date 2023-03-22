@@ -38,4 +38,6 @@ func main() {
 
 	// 获取训练模型的损失值和正确率
 	router.POST("/data", controller.GetData)
+
+	router.Run(":8080")
 }

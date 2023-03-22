@@ -12,16 +12,20 @@
     <form action="/register" method="post">
         用户名称：<input type="text" name="username"> <br>
         密码：<input type="password" name="password"> <br>
+        权限：<input type="role" name="role"> <br>
+        路径：<input type="path" name="path"> <br>
 
-        <button type="button" onclick="register()">Login</button>
+        <button type="button" onclick="register()">register</button>
 
     </form>
     <script>
-        function login() {
+        function register() {
             const username = document.getElementsByName("username").value;
             const password = document.getElementsByTagName("password").value;
+            const role = document.getElementsByTagName("role").value;
+            const path = document.getElementsByTagName("path").value;
 
-            fetch("http://localhost:8080/login", {
+            fetch("http://localhost:8080/register", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
