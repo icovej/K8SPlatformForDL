@@ -2,6 +2,7 @@ package tools
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"flag"
 	"fmt"
@@ -142,31 +143,24 @@ func CopyFile(filepath string, newFilepath string) error {
 }
 
 // 从文件头追加写入数据
-func WriteAtHead(filepath string, content string) error {
-	// 读取文件内容
-	data, err_read := ioutil.ReadFile(filepath)
-	if err_read != nil {
-		glog.Error("Failed to read dockerfile: %s", filepath)
-		return err_read
-	}
-
-	// 打开文件并准备写入数据
-	file, err_open := os.OpenFile(filepath, os.O_RDWR|os.O_CREATE, 0644)
-	if err_open != nil {
-		glog.Error("Failed to open dockerfile: %s", filepath)
-		return err_open
+func WriteAtBeginning(filename string, data []byte) error {
+	// 读取文件的原始数据
+	file, err := os.OpenFile(filename, os.O_RDWR, 0644)
+	if err != nil {
+		return err
 	}
 	defer file.Close()
-
-	// 将新数据追加到原始数据之前
-	_, err_write := file.WriteAt([]byte(content), 0)
-	if err_write != nil {
-		glog.Error("Failed to write content: %s", content)
-		return err_write
-	}
-	_, err := file.WriteAt(data, int64(len(filepath)))
+	oldData, err := ioutil.ReadAll(file)
 	if err != nil {
-		glog.Error("Failed to write data: %s", data)
+		return err
+	}
+
+	// 将新数据插入到旧数据之前
+	newData := append(data, oldData...)
+
+	// 将新数据写入文件
+	err = ioutil.WriteFile(filename, newData, 0644)
+	if err != nil {
 		return err
 	}
 
@@ -192,9 +186,16 @@ func WriteAtTail(filepath string, image string) error {
 // 执行系统命令
 func ExecCommand(command string, args ...string) ([]byte, error) {
 	cmd := exec.Command(command, args...)
-	output, err := cmd.Output()
+
+	var out bytes.Buffer
+	var stderr bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = &stderr
+
+	err := cmd.Run()
+	output, _ := cmd.Output()
 	if err != nil {
-		glog.Error("Failed to build new images, the error is %s", err)
+		glog.Error("Failed to build new images, the error is ", err.Error()+" "+stderr.String())
 		return nil, err
 	}
 	return output, nil

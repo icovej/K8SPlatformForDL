@@ -9,7 +9,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/docker/docker/api/types"
 	"github.com/gin-gonic/gin"
 	"github.com/golang/glog"
 	corev1 "k8s.io/api/core/v1"
@@ -91,7 +90,7 @@ func CreateImage(c *gin.Context) {
 	// 选择系统
 	osVersion := image_data.Osversion
 	cmd := "FROM " + osVersion + "\n"
-	err_version := tools.WriteAtHead(dstFilepath, cmd)
+	err_version := tools.WriteAtBeginning(dstFilepath, []byte(cmd))
 	if err_version != nil {
 		c.JSON(http.StatusMovedPermanently, gin.H{
 			"code: ":    1,
@@ -113,22 +112,9 @@ func CreateImage(c *gin.Context) {
 		return
 	}
 
-	// 选择镜像，拉取后将镜像写入dockerfile
+	// 选择镜像，将镜像写入dockerfile
 	imageArray := image_data.Imagearray
-	dockerClient, _ := tools.InitDocker()
-	defer dockerClient.Close()
 	for i := range imageArray {
-		reader, err := dockerClient.ImagePull(context.Background(), imageArray[i], types.ImagePullOptions{})
-		if err != nil {
-			c.JSON(http.StatusMovedPermanently, gin.H{
-				"code: ":    1,
-				"image: ":   imageArray[i],
-				"message: ": err.Error(),
-			})
-			glog.Error("Failed to pull docker image %s, the error is %s", imageArray[i], err)
-			return
-		}
-
 		// 写入dockerfile
 		err_image := tools.WriteAtTail(dstFilepath, imageArray[i])
 		if err_image != nil {
@@ -139,14 +125,12 @@ func CreateImage(c *gin.Context) {
 			glog.Error("Failed to write image to dockerfile, the error is %s", err_image)
 			return
 		}
-		glog.Info("Succeed to pull docker image %s", imageArray[i])
-		defer reader.Close()
 	}
 
 	// 调用exec执行dockerfile，创建用户自定义镜像
 	imageName := image_data.Imagename
-	cmd = "docker build -f "
-	_, err_exec := tools.ExecCommand(cmd, dstFilepath, " -t ", imageName)
+	cmd = "docker"
+	_, err_exec := tools.ExecCommand(cmd, "build", "-t", imageName, "-f", dstFilepath, ".")
 	if err_exec != nil {
 		c.JSON(http.StatusMovedPermanently, gin.H{
 			"code: ":    1,
