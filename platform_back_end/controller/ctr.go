@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"platform_back_end/data"
 	"platform_back_end/tools"
 	"strconv"
 	"strings"
@@ -16,143 +17,103 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-const (
-	gpuMetricName = "nvidia.com/gpu"
-	// 基础dockerfile路径
-	srcfilepath = ""
-)
-
-// 镜像数据的结构体
-type ImageData struct {
-	Dstpath       string   `json:"dstpath"`
-	Osversion     string   `json:"osversion"`
-	Pythonversion string   `json:"pythonversion"`
-	Imagearray    []string `json:"Imagearray"`
-	Imagename     string   `json:"Imagename"`
-}
-
-// Dir数据结构体
-type DirData struct {
-	Dir   string `json:"dir"`
-	Depth string `json:"max-depth"`
-}
-
-// Pod数据结构体
-type PodData struct {
-	Podname   string `json:"podname"`
-	Container string `json:"container_name"`
-	Memory    string `json:"memory"`
-	Cpu       string `json:"cpu"`
-	Gpu       string `json:"gpu"`
-	Memlim    string `json:"memlim"`
-	Cpulim    string `json:"cpulim"`
-	Gpulim    string `json:"gpulim"`
-	Imagename string `json:"imagename"`
-	Mountname string `json:"mountname"`
-	Mountpath string `json:"mountpath"`
-	Nodename  string `json:"nodename"`
-	Namespace string `json:"namespace"`
-}
-
-// 模型训练数据
-type ModelData struct {
-	Loss     uint64 `json:"loss"`
-	Accuracy uint64 `json:"accuracy"`
-}
-
-// 镜像制作
+// Create Image
 func CreateImage(c *gin.Context) {
-	var image_data ImageData
-	// 解析数据
+	var image_data data.ImageData
+	// Parse data that from front-end
 	err_bind := c.ShouldBindJSON(&image_data)
 	if err_bind != nil {
-		c.JSON(http.StatusMovedPermanently, gin.H{
-			"code: ":    1,
-			"message: ": err_bind.Error(),
+		c.JSON(http.StatusBadRequest, gin.H{
+			"code: ":    http.StatusBadRequest,
+			"message: ": fmt.Sprintf("Invalid request payload, err is %v", err_bind.Error()),
 		})
-		glog.Error("Failed to parse data from request to struct, the error is %s", err_bind)
+		glog.Error("Method CreateImage gets invalid request payload")
 		return
 	}
 
-	// 创建用户的dockerfile文件
+	// Create user's dockerfile
 	dstFilepath := image_data.Dstpath
 
-	err_create := tools.CopyFile(srcfilepath, dstFilepath)
+	err_create := tools.CopyFile(data.Srcfilepath, dstFilepath)
 	if err_create != nil {
-		c.JSON(http.StatusMovedPermanently, gin.H{
-			"code: ":    1,
+		c.JSON(http.StatusMethodNotAllowed, gin.H{
+			"code: ":    http.StatusMethodNotAllowed,
 			"message: ": err_create.Error(),
 		})
-		glog.Error("Failed to create dockerfile, the error is %s", err_create)
+		glog.Error("Failed to create dockerfile, the error is %v", err_create)
 		return
 	}
 
-	// 选择系统
+	// Import OS used in user's pod
 	osVersion := image_data.Osversion
-	cmd := "FROM " + osVersion + "\n"
-	err_version := tools.WriteAtBeginning(dstFilepath, []byte(cmd))
+	statement := "FROM " + osVersion + "\n"
+	err_version := tools.WriteAtBeginning(dstFilepath, []byte(statement))
 	if err_version != nil {
-		c.JSON(http.StatusMovedPermanently, gin.H{
-			"code: ":    1,
+		c.JSON(http.StatusMethodNotAllowed, gin.H{
+			"code: ":    http.StatusMethodNotAllowed,
 			"message: ": err_version.Error(),
 		})
-		glog.Error("Failed to write osVersion to dockerfile, the error is %s", err_version)
+		glog.Error("Failed to write osVersion to dockerfile, the error is %v", err_version)
 		return
 	}
 
-	// 选择python
+	// Import python used in user's pod
 	pyVersion := image_data.Pythonversion
 	err_py := tools.WriteAtTail(dstFilepath, pyVersion)
 	if err_py != nil {
-		c.JSON(http.StatusMovedPermanently, gin.H{
-			"code: ":    1,
+		c.JSON(http.StatusMethodNotAllowed, gin.H{
+			"code: ":    http.StatusMethodNotAllowed,
 			"message: ": err_py.Error(),
 		})
-		glog.Error("Failed to write pyVersion to dockerfile, the error is %s", err_py)
+		glog.Error("Failed to write PyVersion to dockerfile, the error is %v", err_py)
 		return
 	}
 
-	// 选择镜像，将镜像写入dockerfile
+	// Import images used in user's pod
+	// And write into dockerfile whoes path is user's working path
 	imageArray := image_data.Imagearray
 	for i := range imageArray {
-		// 写入dockerfile
 		err_image := tools.WriteAtTail(dstFilepath, imageArray[i])
 		if err_image != nil {
-			c.JSON(http.StatusMovedPermanently, gin.H{
-				"code: ":    1,
+			c.JSON(http.StatusMethodNotAllowed, gin.H{
+				"code: ":    http.StatusMethodNotAllowed,
 				"message: ": err_image.Error(),
 			})
-			glog.Error("Failed to write image to dockerfile, the error is %s", err_image)
+			glog.Error("Failed to write image to dockerfile, the error is %v", err_image)
 			return
 		}
 	}
 
-	// 调用exec执行dockerfile，创建用户自定义镜像
+	// Create dockerfile
 	imageName := image_data.Imagename
-	cmd = "docker"
+	cmd := "docker"
 	_, err_exec := tools.ExecCommand(cmd, "build", "-t", imageName, "-f", dstFilepath, ".")
 	if err_exec != nil {
-		c.JSON(http.StatusMovedPermanently, gin.H{
-			"code: ":    1,
+		c.JSON(http.StatusMethodNotAllowed, gin.H{
+			"code: ":    http.StatusMethodNotAllowed,
 			"message: ": err_exec.Error(),
 		})
-		glog.Error("Failed to exec docker build, the error is %s", err_exec)
+		glog.Error("Failed to exec docker build, the error is %v", err_exec)
 		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"message": fmt.Sprintf("Succeed to build image: %s", imageName),
+		"code: ":    http.StatusOK,
+		"message: ": fmt.Sprintf("Succeed to build image: %v", imageName),
 	})
 	return
 }
 
-// 获取所有目录的容量大小，为普通用户选择工作目录
+// Get all dir infor which user request
 func GetDirInfo(c *gin.Context) {
-	var Dir DirData
+	var Dir data.DirData
 	err_bind := c.ShouldBindJSON(&Dir)
 	if err_bind != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request payload"})
-		glog.Error("Invalid request payload")
+		c.JSON(http.StatusBadRequest, gin.H{
+			"code: ":    http.StatusBadRequest,
+			"message: ": fmt.Sprintf("Invalid request payload, err is %v", err_bind.Error()),
+		})
+		glog.Error("Method GetDirInfo gets invalid request payload")
 		return
 	}
 
@@ -160,8 +121,11 @@ func GetDirInfo(c *gin.Context) {
 	depth := Dir.Depth
 	output, err_exec := tools.ExecCommand("du -h --max-depth=", depth, dir)
 	if err_exec != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err_exec.Error()})
-		glog.Error("Failed to get %s info, the error is %s", dir, err_exec)
+		c.JSON(http.StatusMethodNotAllowed, gin.H{
+			"code: ":    http.StatusMethodNotAllowed,
+			"message: ": err_exec.Error(),
+		})
+		glog.Error("Failed to get %v info, the error is %v", dir, err_exec)
 		return
 	}
 
@@ -177,17 +141,20 @@ func GetDirInfo(c *gin.Context) {
 	c.JSON(http.StatusOK, result)
 }
 
-// 创建容器
+// Create Pod
 func CreatePod(c *gin.Context) {
-	var pod PodData
+	var pod data.PodData
 	err_bind := c.ShouldBindJSON(&pod)
 	if err_bind != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err_bind.Error()})
-		glog.Error("Failed to parse data form request, the error is %s", err_bind)
+		c.JSON(http.StatusBadRequest, gin.H{
+			"code: ":    http.StatusBadRequest,
+			"message: ": fmt.Sprintf("Invalid request payload, err is %v", err_bind.Error()),
+		})
+		glog.Error("Method CreatePod gets invalid request payload")
 		return
 	}
 
-	// 获取当前可用的Mem、CPU和PU
+	// Get avaliable Mem, CPU and PU
 	var avaGPU uint64
 	m := make(map[int]uint64)
 	avaMem, avaCPU, m, _ := tools.GetAvailableMemoryAndGPU()
@@ -195,60 +162,82 @@ func CreatePod(c *gin.Context) {
 		avaGPU += m[i]
 	}
 
-	// 比较用户请求数和可用数
-	// TODO:这块儿判断逻辑有点问题，创建pod功能没问题
+	// Compare the value user request and the avaliable
+	// TODO:the logic of there has a little troubles, need to fix.
+	// main problem is what we get from request has different unit, maybe need match that
 	am_str := strconv.FormatUint(avaMem, 10)
 	ac_str := strconv.FormatInt(int64(avaCPU), 10)
 	ag_str := strconv.FormatUint(avaGPU, 10)
 	if (pod.Memory > am_str) || (pod.Cpu > ac_str) || (pod.Gpu > ag_str) ||
 		(pod.Memory > pod.Memlim) || (pod.Cpu > pod.Cpulim) || (pod.Gpu > pod.Gpulim) {
 		err := errors.New("sources required are larger than the avaliable!")
-		c.AbortWithError(http.StatusForbidden, err)
+		c.JSON(http.StatusBadRequest, gin.H{
+			"code: ":    http.StatusBadRequest,
+			"message: ": err.Error(),
+		})
 		glog.Error("Failed to alloc sources to create pod, because the free sources are limited!")
 		return
 	}
 
-	// 解析内存、CPU和GPU至k8s模式
+	// Parse mem、CPU and GPU to k8s mod
 	memReq, err_mem := resource.ParseQuantity(pod.Memory)
 	if err_mem != nil {
-		glog.Error("Failed to parse mem, the error is %s", err_mem)
-		c.AbortWithError(http.StatusBadRequest, err_mem)
+		c.JSON(http.StatusBadRequest, gin.H{
+			"code: ":    http.StatusBadRequest,
+			"message: ": err_mem.Error(),
+		})
+		glog.Error("Failed to parse mem, the error is %v", err_mem)
 		return
 	}
 	memLim, err_meml := resource.ParseQuantity(pod.Memlim)
 	if err_meml != nil {
-		glog.Error("Failed to parse mem, the error is %s", err_meml)
-		c.AbortWithError(http.StatusBadRequest, err_meml)
+		c.JSON(http.StatusBadRequest, gin.H{
+			"code: ":    http.StatusBadRequest,
+			"message: ": err_meml.Error(),
+		})
+		glog.Error("Failed to parse mem, the error is %v", err_meml)
 		return
 	}
 
 	cpuReq, err_cpu := resource.ParseQuantity(pod.Cpu)
 	if err_cpu != nil {
-		glog.Error("Failed to parse cpu, the error is %s", err_cpu)
-		c.AbortWithError(http.StatusBadRequest, err_cpu)
+		c.JSON(http.StatusBadRequest, gin.H{
+			"code: ":    http.StatusBadRequest,
+			"message: ": err_cpu.Error(),
+		})
+		glog.Error("Failed to parse cpu, the error is %v", err_cpu)
 		return
 	}
 	cpuLim, err_cpul := resource.ParseQuantity(pod.Cpulim)
 	if err_cpul != nil {
-		glog.Error("Failed to parse mem, the error is %s", err_cpul)
-		c.AbortWithError(http.StatusBadRequest, err_cpul)
+		c.JSON(http.StatusBadRequest, gin.H{
+			"code: ":    http.StatusBadRequest,
+			"message: ": err_cpul.Error(),
+		})
+		glog.Error("Failed to parse mem, the error is %v", err_cpul)
 		return
 	}
 
 	gpuReq, err_gpu := resource.ParseQuantity(pod.Gpu)
 	if err_gpu != nil {
-		glog.Error("Failed to parse gpu, the error is %s", err_gpu)
-		c.AbortWithError(http.StatusBadRequest, err_gpu)
+		c.JSON(http.StatusBadRequest, gin.H{
+			"code: ":    http.StatusBadRequest,
+			"message: ": err_gpu.Error(),
+		})
+		glog.Error("Failed to parse gpu, the error is %v", err_gpu)
 		return
 	}
 	gpuLim, err_gpul := resource.ParseQuantity(pod.Gpulim)
 	if err_gpul != nil {
-		glog.Error("Failed to parse mem, the error is %s", err_gpul)
-		c.AbortWithError(http.StatusBadRequest, err_gpul)
+		c.JSON(http.StatusBadRequest, gin.H{
+			"code: ":    http.StatusBadRequest,
+			"message: ": err_gpu.Error(),
+		})
+		glog.Error("Failed to parse mem, the error is %v", err_gpul)
 		return
 	}
 
-	// pod的yaml
+	// form pod's yaml
 	newPod := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: pod.Podname,
@@ -268,14 +257,14 @@ func CreatePod(c *gin.Context) {
 					ImagePullPolicy: corev1.PullIfNotPresent,
 					Resources: corev1.ResourceRequirements{
 						Requests: corev1.ResourceList{
-							corev1.ResourceMemory:              memReq,
-							corev1.ResourceCPU:                 cpuReq,
-							corev1.ResourceName(gpuMetricName): gpuReq,
+							corev1.ResourceMemory:                   memReq,
+							corev1.ResourceCPU:                      cpuReq,
+							corev1.ResourceName(data.GpuMetricName): gpuReq,
 						},
 						Limits: corev1.ResourceList{
-							corev1.ResourceMemory:              memLim,
-							corev1.ResourceCPU:                 cpuLim,
-							corev1.ResourceName(gpuMetricName): gpuLim,
+							corev1.ResourceMemory:                   memLim,
+							corev1.ResourceCPU:                      cpuLim,
+							corev1.ResourceName(data.GpuMetricName): gpuLim,
 						},
 					},
 					VolumeMounts: []corev1.VolumeMount{
@@ -300,27 +289,28 @@ func CreatePod(c *gin.Context) {
 		},
 	}
 
-	// 创建pod
+	// create pod
 	clientset, err_k8s := tools.InitK8S()
 	if err_k8s != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err_k8s.Error()})
-		glog.Error("Failed to start k8s %s", err_k8s)
+		c.JSON(http.StatusMethodNotAllowed, gin.H{
+			"code: ":    http.StatusMethodNotAllowed,
+			"message: ": err_k8s.Error(),
+		})
+		glog.Error("Failed to start k8s %v", err_k8s)
 		return
 	}
 	pod_container, err := clientset.CoreV1().Pods(pod.Namespace).Create(context.Background(), newPod, metav1.CreateOptions{})
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		glog.Error("Failed to create pod %s", err)
+		c.JSON(http.StatusMethodNotAllowed, gin.H{
+			"code: ":    http.StatusMethodNotAllowed,
+			"message: ": err.Error(),
+		})
+		glog.Error("Failed to create pod %v", err)
 		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"code: ":    1,
+		"code: ":    http.StatusOK,
 		"message: ": fmt.Sprintf("Succeed to create pod, its name is %v", pod_container.GetObjectMeta().GetName()),
 	})
-}
-
-// 获取模型训练数据，进行可视化
-func GetModelingData(c *gin.Context) {
-
 }
