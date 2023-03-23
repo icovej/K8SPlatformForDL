@@ -1,43 +1,29 @@
-package controller
+package main
 
 import (
 	"context"
+	"errors"
+	"flag"
 	"fmt"
 	"net/http"
-	"platform_back_end/tools"
-	"strconv"
-	"strings"
+	"path/filepath"
 
+	"strconv"
+
+	"runtime"
+
+	"github.com/NVIDIA/gpu-monitoring-tools/bindings/go/nvml"
 	"github.com/gin-gonic/gin"
 	"github.com/golang/glog"
-	"github.com/pkg/errors"
+	"github.com/shirou/gopsutil/mem"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/tools/clientcmd"
+	"k8s.io/client-go/util/homedir"
 )
 
-const (
-	gpuMetricName = "nvidia.com/gpu"
-	// 基础dockerfile路径
-	srcfilepath = ""
-)
-
-// 镜像数据的结构体
-type ImageData struct {
-	Dstpath       string   `json:"dstpath"`
-	Osversion     string   `json:"osversion"`
-	Pythonversion string   `json:"pythonversion"`
-	Imagearray    []string `json:"Imagearray"`
-	Imagename     string   `json:"Imagename"`
-}
-
-// Dir数据结构体
-type DirData struct {
-	Dir   string `json:"dir"`
-	Depth string `json:"max-depth"`
-}
-
-// Pod数据结构体
 type PodData struct {
 	Podname   string `json:"podname"`
 	Container string `json:"container_name"`
@@ -54,130 +40,77 @@ type PodData struct {
 	Namespace string `json:"namespace"`
 }
 
-// 模型训练数据
-type ModelData struct {
-	Loss     uint64 `json:"loss"`
-	Accuracy uint64 `json:"accuracy"`
+const gpuMetricName = "nvidia.com/gpu"
+
+// 初始化Kubernetes客户端
+func InitK8S() (*kubernetes.Clientset, error) {
+	var kubeconfig *string
+	if home := homedir.HomeDir(); home != "" {
+		kubeconfig = flag.String("kubeconfig", filepath.Join(home, ".kube", "config"), "(optional) absolute path to the kubeconfig file")
+	} else {
+		kubeconfig = flag.String("kubeconfig", "", "absolute path to the kubeconfig file")
+	}
+	flag.Parse()
+
+	// 使用kubeconfig中的当前上下文,加载配置文件
+	config, err_config := clientcmd.BuildConfigFromFlags("", *kubeconfig)
+	if err_config != nil {
+		glog.Error("Failed to use load kubeconfig, the error is %s ", err_config)
+		return nil, err_config
+	}
+
+	// 创建clientset
+	clientset, err_client := kubernetes.NewForConfig(config)
+	if err_client != nil {
+		glog.Error("Failed to create clientset, the error is %s ", err_client)
+		return nil, err_client
+	}
+
+	return clientset, nil
 }
 
-// 镜像制作
-func CreateImage(c *gin.Context) {
-	var image_data ImageData
-	// 解析数据
-	err_bind := c.ShouldBindJSON(&image_data)
-	if err_bind != nil {
-		c.JSON(http.StatusMovedPermanently, gin.H{
-			"code: ":    1,
-			"message: ": err_bind.Error(),
-		})
-		glog.Error("Failed to parse data from request to struct, the error is %s", err_bind)
-		return
+// 获取内存和GPU
+func GetAvailableMemoryAndGPU() (uint64, int, map[int]uint64, error) {
+	// 获取系统可用内存
+	memInfo, _ := mem.VirtualMemory()
+	memAva := memInfo.Available / 1024 / 1024 / 1024
+
+	// 获取cpu核数
+	cpuCore := runtime.NumCPU()
+
+	// 获取GPU显存
+	err_init := nvml.Init()
+	if err_init != nil {
+		glog.Error("Failed to init nvml to get futher info, the error is %s", err_init)
+		return 0, 0, nil, err_init
 	}
+	defer nvml.Shutdown()
 
-	// 创建用户的dockerfile文件
-	dstFilepath := image_data.Dstpath
-
-	err_create := tools.CopyFile(srcfilepath, dstFilepath)
-	if err_create != nil {
-		c.JSON(http.StatusMovedPermanently, gin.H{
-			"code: ":    1,
-			"message: ": err_create.Error(),
-		})
-		glog.Error("Failed to create dockerfile, the error is %s", err_create)
-		return
+	m := make(map[int]uint64)
+	// 获取当前机器上显卡数量，并获取每张显卡的数据
+	deviceCount, err_gpu := nvml.GetDeviceCount()
+	if err_gpu != nil {
+		glog.Error("Failed to get all GPU num, the error is %s", err_gpu)
+		return 0, 0, nil, err_gpu
 	}
-
-	// 选择系统
-	osVersion := image_data.Osversion
-	cmd := "FROM " + osVersion + "\n"
-	err_version := tools.WriteAtBeginning(dstFilepath, []byte(cmd))
-	if err_version != nil {
-		c.JSON(http.StatusMovedPermanently, gin.H{
-			"code: ":    1,
-			"message: ": err_version.Error(),
-		})
-		glog.Error("Failed to write osVersion to dockerfile, the error is %s", err_version)
-		return
-	}
-
-	// 选择python
-	pyVersion := image_data.Pythonversion
-	err_py := tools.WriteAtTail(dstFilepath, pyVersion)
-	if err_py != nil {
-		c.JSON(http.StatusMovedPermanently, gin.H{
-			"code: ":    1,
-			"message: ": err_py.Error(),
-		})
-		glog.Error("Failed to write pyVersion to dockerfile, the error is %s", err_py)
-		return
-	}
-
-	// 选择镜像，将镜像写入dockerfile
-	imageArray := image_data.Imagearray
-	for i := range imageArray {
-		// 写入dockerfile
-		err_image := tools.WriteAtTail(dstFilepath, imageArray[i])
-		if err_image != nil {
-			c.JSON(http.StatusMovedPermanently, gin.H{
-				"code: ":    1,
-				"message: ": err_image.Error(),
-			})
-			glog.Error("Failed to write image to dockerfile, the error is %s", err_image)
-			return
+	for i := uint(0); i < deviceCount; i++ {
+		device, err_device := nvml.NewDeviceLite(uint(i))
+		if err_device != nil {
+			glog.Error("Failed to get GPU device, the error is %s", err_device)
+			return 0, 0, nil, err_device
 		}
+
+		deviceStatus, _ := device.Status()
+		usedMem := deviceStatus.Utilization.Memory
+		avaMem := *device.Memory - uint64(*usedMem)
+		m[0] = avaMem
+
+		glog.Info("GPU %s, the avaMem is %s", i, avaMem)
 	}
 
-	// 调用exec执行dockerfile，创建用户自定义镜像
-	imageName := image_data.Imagename
-	cmd = "docker"
-	_, err_exec := tools.ExecCommand(cmd, "build", "-t", imageName, "-f", dstFilepath, ".")
-	if err_exec != nil {
-		c.JSON(http.StatusMovedPermanently, gin.H{
-			"code: ":    1,
-			"message: ": err_exec.Error(),
-		})
-		glog.Error("Failed to exec docker build, the error is %s", err_exec)
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{
-		"message": fmt.Sprintf("Succeed to build image: %s", imageName),
-	})
-	return
+	return memAva, cpuCore, m, nil
 }
 
-// 获取所有目录的容量大小，为普通用户选择工作目录
-func GetDirInfo(c *gin.Context) {
-	var Dir DirData
-	err_bind := c.ShouldBindJSON(&Dir)
-	if err_bind != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request payload"})
-		glog.Error("Invalid request payload")
-		return
-	}
-
-	dir := Dir.Dir
-	depth := Dir.Depth
-	output, err_exec := tools.ExecCommand("du -h --max-depth=", depth, dir)
-	if err_exec != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err_exec.Error()})
-		glog.Error("Failed to get %s info, the error is %s", dir, err_exec)
-		return
-	}
-
-	lines := strings.Split(string(output), "\n")
-	result := make(map[string]string)
-	for _, line := range lines {
-		if line == "" {
-			continue
-		}
-		fields := strings.Split(line, "\t")
-		result[fields[1]] = fields[0]
-	}
-	c.JSON(http.StatusOK, result)
-}
-
-// 创建容器
 func CreatePod(c *gin.Context) {
 	var pod PodData
 	err_bind := c.ShouldBindJSON(&pod)
@@ -190,13 +123,12 @@ func CreatePod(c *gin.Context) {
 	// 获取当前可用的Mem、CPU和PU
 	var avaGPU uint64
 	m := make(map[int]uint64)
-	avaMem, avaCPU, m, _ := tools.GetAvailableMemoryAndGPU()
+	avaMem, avaCPU, m, _ := GetAvailableMemoryAndGPU()
 	for i := range m {
 		avaGPU += m[i]
 	}
 
 	// 比较用户请求数和可用数
-	// TODO:这块儿判断逻辑有点问题，创建pod功能没问题
 	am_str := strconv.FormatUint(avaMem, 10)
 	ac_str := strconv.FormatInt(int64(avaCPU), 10)
 	ag_str := strconv.FormatUint(avaGPU, 10)
@@ -301,7 +233,7 @@ func CreatePod(c *gin.Context) {
 	}
 
 	// 创建pod
-	clientset, err_k8s := tools.InitK8S()
+	clientset, err_k8s := InitK8S()
 	if err_k8s != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err_k8s.Error()})
 		glog.Error("Failed to start k8s %s", err_k8s)
@@ -320,7 +252,32 @@ func CreatePod(c *gin.Context) {
 	})
 }
 
-// 获取模型训练数据，进行可视化
-func GetModelingData(c *gin.Context) {
+func Core() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		method := c.Request.Method
+		c.Header("Access-Control-Allow-Origin", "*")
+		c.Header("Access-Control-Allow-Headers", "Content-Type,AccessToken,X-CSRF-Token,Authorization,Token")
+		c.Header("Access-Control-Allow-Methods", "POST,GET,OPTIONS")
+		c.Header("Access-Control-Expose-Headers", "Content-Length,Access-Control-Allow-Origin,Access-Control-Allow-Headers,Content-Type")
+		c.Header("Access-Control-Allow-Credentials", "True")
+		//放行索引options
+		if method == "OPTIONS" {
+			c.AbortWithStatus(http.StatusNoContent)
+		}
+		//处理请求
+		c.Next()
+	}
+}
+
+func main() {
+	flag.Parse()
+	defer glog.Flush()
+
+	router := gin.Default()
+	router.Use(Core())
+
+	router.POST("/pod", CreatePod)
+
+	router.Run(":8080")
 
 }

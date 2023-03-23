@@ -75,7 +75,8 @@ func InitK8S() (*kubernetes.Clientset, error) {
 func GetAvailableMemoryAndGPU() (uint64, int, map[int]uint64, error) {
 	// 获取系统可用内存
 	memInfo, _ := mem.VirtualMemory()
-	memAva := memInfo.Available / 1024 / 1024 / 1024
+	// MB
+	memAva := memInfo.Available / 1024 / 1024
 
 	// 获取cpu核数
 	cpuCore := runtime.NumCPU()
@@ -103,9 +104,9 @@ func GetAvailableMemoryAndGPU() (uint64, int, map[int]uint64, error) {
 		}
 
 		deviceStatus, _ := device.Status()
-		usedMem := deviceStatus.Utilization.Memory
-		avaMem := *device.Memory - uint64(*usedMem)
-		m[0] = avaMem
+		// 显卡还剩多少G的内存可用
+		avaMem := *deviceStatus.Memory.Global.Free / 1000
+		m[int(i)] = avaMem
 
 		glog.Info("GPU %s, the avaMem is %s", i, avaMem)
 	}
