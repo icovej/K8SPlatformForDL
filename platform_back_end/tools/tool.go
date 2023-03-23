@@ -2,7 +2,6 @@ package tools
 
 import (
 	"bufio"
-	"bytes"
 	"context"
 	"flag"
 	"fmt"
@@ -187,15 +186,9 @@ func WriteAtTail(filepath string, image string) error {
 func ExecCommand(command string, args ...string) ([]byte, error) {
 	cmd := exec.Command(command, args...)
 
-	var out bytes.Buffer
-	var stderr bytes.Buffer
-	cmd.Stdout = &out
-	cmd.Stderr = &stderr
-
-	err := cmd.Run()
-	output, _ := cmd.Output()
+	output, err := cmd.Output()
 	if err != nil {
-		glog.Error("Failed to build new images, the error is ", err.Error()+" "+stderr.String())
+		glog.Error("Failed to exec, the error is ", err.Error())
 		return nil, err
 	}
 	return output, nil
