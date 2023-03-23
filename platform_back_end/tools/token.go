@@ -11,6 +11,13 @@ import (
 	"github.com/golang/glog"
 )
 
+type User struct {
+	Username string `json:"username"`
+	Password string `json:"password"`
+	Role     string `json:"role"`
+	Path     string `json:"path"`
+}
+
 const (
 	TOKEN_MAX_EXPIRE_HOUR      = 1 * 24 * 7 // token最长有效期
 	TOKEN_MAX_REMAINING_MINUTE = 15         // token还有多久过期就返回新token
@@ -18,6 +25,11 @@ const (
 
 type JWT struct {
 	SigningKey []byte
+}
+
+type LoginResult struct {
+	Token string `json:"token"`
+	User
 }
 
 var (
@@ -138,5 +150,54 @@ func JWTAuth() gin.HandlerFunc {
 			return
 		}
 		c.Next()
+	}
+}
+
+func GenerateToken(c *gin.Context, user User) {
+	j := &JWT{
+		SigningKey: []byte("newtoken"),
+	}
+
+	claims := CustomClaims{
+		Username: user.Username,
+		Role:     user.Role,
+		Path:     user.Path,
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: &jwt.NumericDate{Time: time.Now().Add(TOKEN_MAX_EXPIRE_HOUR * time.Hour)},
+		},
+	}
+
+	token, err := j.CreateToken(claims)
+
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{
+			"status": -1,
+			"msg":    err.Error(),
+		})
+		return
+	}
+
+	glog.Info(token)
+
+	data := LoginResult{
+		User:  user,
+		Token: token,
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"status": 0,
+		"msg":    "登录成功！",
+		"data":   data,
+	})
+}
+
+// GetDataByTime 一个需要token认证的测试接口
+func GetDataByTime(c *gin.Context) {
+	claims := c.MustGet("claims").(*CustomClaims)
+	if claims != nil {
+		c.JSON(http.StatusOK, gin.H{
+			"status": 0,
+			"msg":    "token有效",
+			"data":   claims,
+		})
 	}
 }
