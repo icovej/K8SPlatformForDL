@@ -14,9 +14,6 @@ const (
 	// the value is set by Kubernetes
 	GpuMetricName = "nvidia.com/gpu"
 
-	// the basic path of dockerfile
-	Srcfilepath = ""
-
 	// the mask of parsing event file
 	MaskDelta = 0xa282ead8
 
@@ -50,6 +47,8 @@ var (
 	// when the crc of the heand or tail of event file is invalid, the return
 	ErrInvalidChecksum = errors.New("invalid crc")
 	Crc32c             = crc32.MakeTable(crc32.Castagnoli)
+	// the basic path of dockerfile
+	Srcfilepath = ""
 )
 
 // Api information structure

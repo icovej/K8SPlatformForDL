@@ -7,7 +7,6 @@ import (
 	"platform_back_end/data"
 	"platform_back_end/tools"
 	"strconv"
-	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang/glog"
@@ -17,131 +16,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// Create Image
-func CreateImage(c *gin.Context) {
-	var image_data data.ImageData
-	// Parse data that from front-end
-	err_bind := c.ShouldBindJSON(&image_data)
-	if err_bind != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"code: ":    http.StatusBadRequest,
-			"message: ": fmt.Sprintf("Invalid request payload, err is %v", err_bind.Error()),
-		})
-		glog.Error("Method CreateImage gets invalid request payload")
-		return
-	}
-
-	// Create user's dockerfile
-	dstFilepath := image_data.Dstpath
-
-	err_create := tools.CopyFile(data.Srcfilepath, dstFilepath)
-	if err_create != nil {
-		c.JSON(http.StatusMethodNotAllowed, gin.H{
-			"code: ":    http.StatusMethodNotAllowed,
-			"message: ": err_create.Error(),
-		})
-		glog.Error("Failed to create dockerfile, the error is %v", err_create)
-		return
-	}
-
-	// Import OS used in user's pod
-	osVersion := image_data.Osversion
-	statement := "FROM " + osVersion + "\n"
-	err_version := tools.WriteAtBeginning(dstFilepath, []byte(statement))
-	if err_version != nil {
-		c.JSON(http.StatusMethodNotAllowed, gin.H{
-			"code: ":    http.StatusMethodNotAllowed,
-			"message: ": err_version.Error(),
-		})
-		glog.Error("Failed to write osVersion to dockerfile, the error is %v", err_version)
-		return
-	}
-
-	// Import python used in user's pod
-	pyVersion := image_data.Pythonversion
-	err_py := tools.WriteAtTail(dstFilepath, pyVersion)
-	if err_py != nil {
-		c.JSON(http.StatusMethodNotAllowed, gin.H{
-			"code: ":    http.StatusMethodNotAllowed,
-			"message: ": err_py.Error(),
-		})
-		glog.Error("Failed to write PyVersion to dockerfile, the error is %v", err_py)
-		return
-	}
-
-	// Import images used in user's pod
-	// And write into dockerfile whoes path is user's working path
-	imageArray := image_data.Imagearray
-	for i := range imageArray {
-		err_image := tools.WriteAtTail(dstFilepath, imageArray[i])
-		if err_image != nil {
-			c.JSON(http.StatusMethodNotAllowed, gin.H{
-				"code: ":    http.StatusMethodNotAllowed,
-				"message: ": err_image.Error(),
-			})
-			glog.Error("Failed to write image to dockerfile, the error is %v", err_image)
-			return
-		}
-	}
-
-	// Create dockerfile
-	imageName := image_data.Imagename
-	cmd := "docker"
-	_, err_exec := tools.ExecCommand(cmd, "build", "-t", imageName, "-f", dstFilepath, ".")
-	if err_exec != nil {
-		c.JSON(http.StatusMethodNotAllowed, gin.H{
-			"code: ":    http.StatusMethodNotAllowed,
-			"message: ": err_exec.Error(),
-		})
-		glog.Error("Failed to exec docker build, the error is %v", err_exec)
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{
-		"code: ":    http.StatusOK,
-		"message: ": fmt.Sprintf("Succeed to build image: %v", imageName),
-	})
-	return
-}
-
-// Get all dir infor which user request
-func GetDirInfo(c *gin.Context) {
-	var Dir data.DirData
-	err_bind := c.ShouldBindJSON(&Dir)
-	if err_bind != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"code: ":    http.StatusBadRequest,
-			"message: ": fmt.Sprintf("Invalid request payload, err is %v", err_bind.Error()),
-		})
-		glog.Error("Method GetDirInfo gets invalid request payload")
-		return
-	}
-
-	dir := Dir.Dir
-	depth := Dir.Depth
-	output, err_exec := tools.ExecCommand("du -h --max-depth=", depth, dir)
-	if err_exec != nil {
-		c.JSON(http.StatusMethodNotAllowed, gin.H{
-			"code: ":    http.StatusMethodNotAllowed,
-			"message: ": err_exec.Error(),
-		})
-		glog.Error("Failed to get %v info, the error is %v", dir, err_exec)
-		return
-	}
-
-	lines := strings.Split(string(output), "\n")
-	result := make(map[string]string)
-	for _, line := range lines {
-		if line == "" {
-			continue
-		}
-		fields := strings.Split(line, "\t")
-		result[fields[1]] = fields[0]
-	}
-	c.JSON(http.StatusOK, result)
-}
-
 // Create Pod
+// It's a little bulky, we'll fix it
 func CreatePod(c *gin.Context) {
 	var pod data.PodData
 	err_bind := c.ShouldBindJSON(&pod)
@@ -157,26 +33,54 @@ func CreatePod(c *gin.Context) {
 	// Get avaliable Mem, CPU and PU
 	var avaGPU uint64
 	m := make(map[int]uint64)
+	// the unit of avaMem and avaGPU is bytes, the unit of avaCPU is core
 	avaMem, avaCPU, m, _ := tools.GetAvailableMemoryAndGPU()
 	for i := range m {
 		avaGPU += m[i]
 	}
 
 	// Compare the value user request and the avaliable
-	// TODO:the logic of there has a little troubles, need to fix.
-	// main problem is what we get from request has different unit, maybe need match that
-	am_str := strconv.FormatUint(avaMem, 10)
 	ac_str := strconv.FormatInt(int64(avaCPU), 10)
 	ag_str := strconv.FormatUint(avaGPU, 10)
-	if (pod.Memory > am_str) || (pod.Cpu > ac_str) || (pod.Gpu > ag_str) ||
-		(pod.Memory > pod.Memlim) || (pod.Cpu > pod.Cpulim) || (pod.Gpu > pod.Gpulim) {
+
+	// according to user's request, transform user's value to Bytes
+	memValue, memUnit := tools.GetLastTwoChars(pod.Memory)
+	var pod_Memory int64
+	if memUnit == "Gi" {
+		tmp, _ := strconv.ParseFloat(memValue, 64)
+		pod_Memory = tools.GiBToBytes(tmp)
+	} else if memUnit == "Mi" {
+		tmp, _ := strconv.ParseFloat(memValue, 64)
+		pod_Memory = tools.MiBToBytes(tmp)
+	}
+
+	memlValue, memlUnit := tools.GetLastTwoChars(pod.Memlim)
+	var pod_Lmemory int64
+	if memlUnit == "Gi" {
+		tmp, _ := strconv.ParseFloat(memlValue, 64)
+		pod_Lmemory = tools.GiBToBytes(tmp)
+	} else if memUnit == "Mi" {
+		tmp, _ := strconv.ParseFloat(memlValue, 64)
+		pod_Lmemory = tools.MiBToBytes(tmp)
+	}
+
+	if (pod_Memory > int64(avaMem)) || (pod.Cpu > ac_str) || (pod.Gpu > ag_str) {
 		err := errors.New("sources required are larger than the avaliable!")
 		c.JSON(http.StatusBadRequest, gin.H{
 			"code: ":    http.StatusBadRequest,
 			"message: ": err.Error(),
 		})
-		glog.Error("Failed to alloc sources to create pod, because the free sources are limited!")
+		glog.Error("sources required are larger than the avaliable!")
 		return
+	}
+
+	if (pod_Memory > pod_Lmemory) || (pod.Cpu > pod.Cpulim) || (pod.Gpu > pod.Gpulim) {
+		err := errors.New("sources required are larger than the limited!")
+		c.JSON(http.StatusBadRequest, gin.H{
+			"code: ":    http.StatusBadRequest,
+			"message: ": err.Error(),
+		})
+		glog.Error("sources required are larger than the limited!")
 	}
 
 	// Parse mem、CPU and GPU to k8s mod

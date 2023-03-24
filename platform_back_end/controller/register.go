@@ -1,20 +1,17 @@
 package controller
 
 import (
-	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"platform_back_end/data"
+	"platform_back_end/tools"
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang/glog"
 )
 
-type User data.User
-
 func RegisterHandler(c *gin.Context) {
-	var user User
+	var user data.User
 	err_bind := c.ShouldBindJSON(&user)
 	if err_bind != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
@@ -26,7 +23,7 @@ func RegisterHandler(c *gin.Context) {
 	}
 
 	// Check if the account has existed
-	users, err_check := checkUsers()
+	users, err_check := tools.CheckUsers()
 	if err_check != nil {
 		c.JSON(http.StatusMethodNotAllowed, gin.H{
 			"code: ":    http.StatusMethodNotAllowed,
@@ -75,7 +72,7 @@ func RegisterHandler(c *gin.Context) {
 
 	// add new user info to file
 	users = append(users, user)
-	err_add := writeUsers(users)
+	err_add := tools.WriteUsers(users)
 	if err_add != nil {
 		c.JSON(http.StatusMethodNotAllowed, gin.H{
 			"code: ":    http.StatusMethodNotAllowed,
@@ -89,40 +86,4 @@ func RegisterHandler(c *gin.Context) {
 		"code: ":    http.StatusOK,
 		"message: ": "Succeed to registe",
 	})
-}
-
-func checkUsers() ([]User, error) {
-	data, err := ioutil.ReadFile("")
-	if err != nil {
-		glog.Error("Failed to read file, the error is %v", err.Error())
-		return nil, err
-	}
-
-	var users []User
-	if len(data) == 0 {
-		return nil, nil
-	}
-	err = json.Unmarshal(data, &users)
-	if err != nil {
-		glog.Error("Failed to unmarshal user data, the error is %v", err.Error())
-		return nil, err
-	}
-
-	return users, nil
-}
-
-func writeUsers(users []User) error {
-	data, err := json.Marshal(users)
-	if err != nil {
-		glog.Error("Failed to marshal user data, the error is %v", err.Error())
-		return err
-	}
-
-	err = ioutil.WriteFile("", data, 0644)
-	if err != nil {
-		glog.Error("Failed to write file, the error is %v", err.Error())
-		return err
-	}
-
-	return nil
 }

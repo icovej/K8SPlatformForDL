@@ -9,6 +9,7 @@ import (
 	"hash/crc32"
 	"io"
 	"io/ioutil"
+	"math"
 	"net/http"
 	"os"
 	"os/exec"
@@ -78,8 +79,8 @@ func InitK8S() (*kubernetes.Clientset, error) {
 func GetAvailableMemoryAndGPU() (uint64, int, map[int]uint64, error) {
 	// Get avaliable mem of host machine
 	memInfo, _ := mem.VirtualMemory()
-	// MBTODO:It need to be fixed according to user's unit
-	memAva := memInfo.Available / 1024 / 1024
+	// the unit is bytes
+	memAva := memInfo.Available
 
 	// Get CPU cores
 	cpuCore := runtime.NumCPU()
@@ -107,8 +108,8 @@ func GetAvailableMemoryAndGPU() (uint64, int, map[int]uint64, error) {
 		}
 
 		deviceStatus, _ := device.Status()
-		// Get free num
-		avaMem := *deviceStatus.Memory.Global.Free / 1000
+		// Get free num, the unit is bytes
+		avaMem := *deviceStatus.Memory.Global.Free
 		m[int(i)] = avaMem
 
 		glog.Info("GPU %v, the avaMem is %v", i, avaMem)
@@ -323,4 +324,58 @@ func VerifyChecksum(d []byte, crcMasked uint32) bool {
 	crc := crc32.Checksum(d, data.Crc32c)
 
 	return crc == unmaskedCrc
+}
+
+func CheckUsers() ([]data.User, error) {
+	datas, err := ioutil.ReadFile("")
+	if err != nil {
+		glog.Error("Failed to read file, the error is %v", err.Error())
+		return nil, err
+	}
+
+	var users []data.User
+	if len(datas) == 0 {
+		return nil, nil
+	}
+	err = json.Unmarshal(datas, &users)
+	if err != nil {
+		glog.Error("Failed to unmarshal user data, the error is %v", err.Error())
+		return nil, err
+	}
+
+	return users, nil
+}
+
+func WriteUsers(users []data.User) error {
+	data, err := json.Marshal(users)
+	if err != nil {
+		glog.Error("Failed to marshal user data, the error is %v", err.Error())
+		return err
+	}
+
+	err = ioutil.WriteFile("", data, 0644)
+	if err != nil {
+		glog.Error("Failed to write file, the error is %v", err.Error())
+		return err
+	}
+
+	return nil
+}
+
+func GetLastTwoChars(str string) (string, string) {
+	length := len(str)
+	if length < 2 {
+		return "", ""
+	}
+	lastTwo := str[length-2:]
+	others := str[:length-2]
+	return lastTwo, others
+}
+
+func GiBToBytes(gib float64) int64 {
+	return int64(gib * math.Pow(1024, 3))
+}
+
+func MiBToBytes(mib float64) int64 {
+	return int64(mib * math.Pow(1024, 2))
 }
