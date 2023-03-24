@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"platform_back_end/controller"
+	"platform_back_end/data"
 	"platform_back_end/tools"
 
 	"github.com/gin-gonic/gin"
@@ -10,8 +11,15 @@ import (
 )
 
 func main() {
-	// 启动glog
+	// parse cmdline
 	flag.Parse()
+
+	var srcfilepath = flag.String("srcfilepath", "", "the original dockerfile path")
+	data.Srcfilepath = *srcfilepath
+
+	var logdir = flag.String("logdir", "", "The path to save glog")
+	flag.Lookup("log_dir").Value.Set(*logdir)
+
 	defer glog.Flush()
 
 	// 初始化Gin框架

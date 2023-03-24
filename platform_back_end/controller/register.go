@@ -1,51 +1,59 @@
 package controller
 
 import (
-	"encoding/json"
-	"io/ioutil"
+	"fmt"
 	"net/http"
+	"platform_back_end/data"
+	"platform_back_end/tools"
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang/glog"
 )
 
-type NormalUser struct {
-	Username string `json:"username"`
-	Password string `json:"password"`
-	Role     string `json:"role"`
-	Path     string `json:"path"`
-}
-
 func RegisterHandler(c *gin.Context) {
-	// 获取请求中的json数据
-	var user NormalUser
+	var user data.User
 	err_bind := c.ShouldBindJSON(&user)
 	if err_bind != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err_bind.Error()})
-		glog.Error("Failed to parse data form request, the error is %s", err_bind)
+		c.JSON(http.StatusBadRequest, gin.H{
+			"code: ":    http.StatusBadRequest,
+			"message: ": fmt.Sprintf("Invalid request payload, err is %v", err_bind.Error()),
+		})
+		glog.Error("Method RegisterHandler gets invalid request payload")
 		return
 	}
 
-	// 检查账号是否已经被注册
-	users, err_check := checkUsers()
+	// Check if the account has existed
+	users, err_check := tools.CheckUsers()
 	if err_check != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to read users file"})
-		glog.Error("Failed to read users file!")
+		c.JSON(http.StatusMethodNotAllowed, gin.H{
+			"code: ":    http.StatusMethodNotAllowed,
+			"message: ": err_check.Error(),
+		})
+		glog.Error("Failed to check user info, the error is %v", err_check)
 		return
 	}
 	for _, u := range users {
 		if u.Username == user.Username {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Username already exists"})
+			c.JSON(http.StatusForbidden, gin.H{
+				"code: ":    http.StatusForbidden,
+				"message: ": "Username already exists",
+			})
 			glog.Error("Username already exists!")
 			return
 		}
 		if u.Path == user.Path {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "This path has already been used"})
+			c.JSON(http.StatusForbidden, gin.H{
+				"code: ":    http.StatusForbidden,
+				"message: ": "This path has already been used",
+			})
 			glog.Error("This path has already been used")
 			return
 		}
 		if u.Role == "admin" && user.Role == "admin" {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "One cluster can have only one admin"})
+			c.JSON(http.StatusForbidden, gin.H{
+				"code: ":    http.StatusForbidden,
+				"message: ": "One cluster can have only one admin",
+			})
 			glog.Error("One cluster can have only one admin")
 			return
 		}
@@ -53,56 +61,29 @@ func RegisterHandler(c *gin.Context) {
 
 	if user.Role != "admin" {
 		if user.Path == "" {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "User's path is nil"})
+			c.JSON(http.StatusForbidden, gin.H{
+				"code: ":    http.StatusForbidden,
+				"message: ": "User's path is nil!",
+			})
 			glog.Error("User's path is nil!")
 			return
 		}
 	}
 
-	// 将新用户写入文件
+	// add new user info to file
 	users = append(users, user)
-	err_add := writeUsers(users)
+	err_add := tools.WriteUsers(users)
 	if err_add != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to write users file"})
+		c.JSON(http.StatusMethodNotAllowed, gin.H{
+			"code: ":    http.StatusMethodNotAllowed,
+			"message: ": "Failed to write users file!",
+		})
 		glog.Error("Failed to write users file!")
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "register success"})
-}
-
-func checkUsers() ([]NormalUser, error) {
-	// 从文件中读取用户信息
-	data, err := ioutil.ReadFile("")
-	if err != nil {
-		return nil, err
-	}
-
-	// 解析JSON数据
-	var users []NormalUser
-	if len(data) == 0 {
-		return nil, nil
-	}
-	err = json.Unmarshal(data, &users)
-	if err != nil {
-		return nil, err
-	}
-
-	return users, nil
-}
-
-func writeUsers(users []NormalUser) error {
-	// 将用户信息转为JSON格式
-	data, err := json.Marshal(users)
-	if err != nil {
-		return err
-	}
-
-	// 将JSON数据写入文件
-	err = ioutil.WriteFile("", data, 0644)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	c.JSON(http.StatusOK, gin.H{
+		"code: ":    http.StatusOK,
+		"message: ": "Succeed to registe",
+	})
 }

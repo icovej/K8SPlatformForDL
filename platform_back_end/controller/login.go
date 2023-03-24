@@ -1,8 +1,6 @@
 package controller
 
 import (
-	"encoding/json"
-	"io/ioutil"
 	"net/http"
 	"platform_back_end/tools"
 
@@ -14,9 +12,12 @@ func Login(c *gin.Context) {
 	username := c.PostForm("username")
 	password := c.PostForm("password")
 
-	users, err := loadUsers("")
+	users, err := tools.LoadUsers("")
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusMethodNotAllowed, gin.H{
+			"code: ":  http.StatusMethodNotAllowed,
+			"error: ": err.Error(),
+		})
 		glog.Error("Failed to load saved users info")
 		return
 	}
@@ -26,20 +27,10 @@ func Login(c *gin.Context) {
 			tools.GenerateToken(c, users[i])
 			break
 		} else {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid credentials"})
+			c.JSON(http.StatusUnauthorized, gin.H{
+				"code: ":  http.StatusUnauthorized,
+				"message": "Invalid credentials",
+			})
 		}
 	}
-}
-
-func loadUsers(filename string) ([]tools.User, error) {
-	bytes, err := ioutil.ReadFile(filename)
-	if err != nil {
-		return nil, err
-	}
-	var users []tools.User
-	err = json.Unmarshal(bytes, &users)
-	if err != nil {
-		return nil, err
-	}
-	return users, nil
 }

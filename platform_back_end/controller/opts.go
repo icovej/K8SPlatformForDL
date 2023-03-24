@@ -2,16 +2,12 @@ package controller
 
 import (
 	"net/http"
+	"platform_back_end/data"
 
 	"github.com/gin-gonic/gin"
 )
 
-// 操作接口信息
-type Operation struct {
-	Api    string `json:"api"`
-	Params string `json:"params"`
-	Remark string `json:"remark"`
-}
+type Operation data.Operation
 
 // 操作接口信息
 func OperationInfo(c *gin.Context) {
@@ -48,6 +44,9 @@ func OperationInfo(c *gin.Context) {
 		},
 	}
 
-	c.JSON(http.StatusOK, gin.H{"code": 0, "list": list})
+	c.JSON(http.StatusOK, gin.H{
+		"code": http.StatusOK,
+		"list": list,
+	})
 	return
 }

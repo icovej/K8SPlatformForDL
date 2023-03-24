@@ -1,9 +1,9 @@
 package tools
 
 import (
-	"errors"
 	"fmt"
 	"net/http"
+	"platform_back_end/data"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -11,130 +11,94 @@ import (
 	"github.com/golang/glog"
 )
 
-type User struct {
-	Username string `json:"username"`
-	Password string `json:"password"`
-	Role     string `json:"role"`
-	Path     string `json:"path"`
-}
+type JWT data.JWT
 
-const (
-	TOKEN_MAX_EXPIRE_HOUR      = 1 * 24 * 7 // token最长有效期
-	TOKEN_MAX_REMAINING_MINUTE = 15         // token还有多久过期就返回新token
-)
-
-type JWT struct {
-	SigningKey []byte
-}
-
-type LoginResult struct {
-	Token string `json:"token"`
-	User
-}
-
-var (
-	TokenExpired     error  = errors.New("Token is expired")
-	TokenExpiring    error  = errors.New("Token will be expired in one minute")
-	TokenNotValidYet error  = errors.New("Token not active yet")
-	TokenMalformed   error  = errors.New("That's not even a token")
-	TokenInvalid     error  = errors.New("Couldn't handle this token:")
-	SignKey          string = "newkey"
-)
-
-// 载荷，可以加一些自己需要的信息
-type CustomClaims struct {
-	Username string `json:"username"`
-	Role     string `json:"role"`
-	Path     string `json:"path"`
-	jwt.RegisteredClaims
-}
-
-// 新建一个jwt实例
+// Create a jwt instance
 func NewJWT() *JWT {
 	return &JWT{
 		[]byte(GetSignKey()),
 	}
 }
 
-// 获取signKey
+// Get signKey
 func GetSignKey() string {
-	return SignKey
+	return data.SignKey
 }
 
-// 这是SignKey
 func SetSignKey(key string) string {
-	SignKey = key
-	return SignKey
+	data.SignKey = key
+	return data.SignKey
 }
 
-// CreateToken 生成一个token
-func (j *JWT) CreateToken(claims CustomClaims) (string, error) {
+// CreateToken create a token
+func (j *JWT) CreateToken(claims data.CustomClaims) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	return token.SignedString(j.SigningKey)
 }
 
-// 解析Tokne
+// Parse tokne
+// TODO: some signs haven't been used
 func (j *JWT) ParseToken(tokenString string) (*jwt.Token, error) {
-	token, err := jwt.ParseWithClaims(tokenString, &CustomClaims{}, func(token *jwt.Token) (interface{}, error) {
+	token, err := jwt.ParseWithClaims(tokenString, &data.CustomClaims{}, func(token *jwt.Token) (interface{}, error) {
 		return j.SigningKey, nil
 	})
 	if err != nil {
 		if ve, ok := err.(*jwt.ValidationError); ok {
 			if ve.Errors&jwt.ValidationErrorMalformed != 0 {
-				return nil, TokenMalformed
+				return nil, data.TokenMalformed
 			} else if ve.Errors&jwt.ValidationErrorExpired != 0 {
 				// Token is expired
-				return nil, TokenExpired
+				return nil, data.TokenExpired
 			} else if ve.Errors&jwt.ValidationErrorNotValidYet != 0 {
-				return nil, TokenNotValidYet
+				return nil, data.TokenNotValidYet
 			} else {
-				return nil, TokenInvalid
+				return nil, data.TokenInvalid
 			}
 		}
 	}
 	return token, nil
 }
 
-// JWT中间件
+// JWT middleware
 func JWTAuth() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		tokenString := c.Request.Header.Get("token")
 		if tokenString == "" {
-			c.JSON(http.StatusOK, gin.H{
-				"status": -1,
-				"msg":    "请求未携带tken, 无权限访问",
+			c.JSON(http.StatusBadRequest, gin.H{
+				"code":    http.StatusBadRequest,
+				"message": "The request is nil with no token, unauthorized access",
 			})
-			c.Abort()
+			glog.Error("The request is nil with no token, unauthorized access")
 			return
 		}
 
-		glog.Info("get token: ", tokenString)
+		glog.Info("Get token: ", tokenString)
 
 		j := NewJWT()
-		// parseToken 解析token包含的信息
 		token, err := j.ParseToken(tokenString)
-		if err != nil && err == TokenExpired {
-			c.JSON(http.StatusOK, gin.H{
-				"status": -1,
-				"msg":    "token has been expired",
+		if err != nil && err == data.TokenExpired {
+			c.JSON(http.StatusForbidden, gin.H{
+				"code":    http.StatusForbidden,
+				"message": "Token has been expired",
 			})
-			c.Abort()
+			glog.Error("Token has been expired")
 			return
 		}
-		if claims, ok := token.Claims.(*CustomClaims); ok && token.Valid {
+		if claims, ok := token.Claims.(*data.CustomClaims); ok && token.Valid {
 			if !claims.VerifyExpiresAt(time.Now(), false) {
 				c.JSON(http.StatusForbidden, gin.H{
-					"status": -1,
-					"msg":    "access token expired",
+					"code":    http.StatusForbidden,
+					"message": "Access token expired",
 				})
+				glog.Error("Access token expired")
 			}
-			if t := claims.ExpiresAt.Time.Add(-time.Minute * TOKEN_MAX_REMAINING_MINUTE); t.Before(time.Now()) {
-				claims := CustomClaims{
+			if t := claims.ExpiresAt.Time.Add(-time.Minute * data.TOKEN_MAX_REMAINING_MINUTE); t.Before(time.Now()) {
+				claims := data.CustomClaims{
 					Username: claims.Username,
 					Role:     claims.Role,
 					Path:     claims.Path,
 					RegisteredClaims: jwt.RegisteredClaims{
-						ExpiresAt: &jwt.NumericDate{Time: time.Now().Add(TOKEN_MAX_EXPIRE_HOUR * time.Hour)},
+						ExpiresAt: &jwt.NumericDate{Time: time.Now().Add(data.TOKEN_MAX_EXPIRE_HOUR * time.Hour)},
 					},
 				}
 				token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
@@ -143,61 +107,63 @@ func JWTAuth() gin.HandlerFunc {
 			}
 			c.Set("claims", claims)
 		} else {
-			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{
-				"code": -1,
-				"msg":  fmt.Sprintf("Claims parse error: %v", err),
+			c.JSON(http.StatusForbidden, gin.H{
+				"code":    http.StatusForbidden,
+				"message": fmt.Sprintf("Failed to parse claims, the error is %v", err.Error()),
 			})
+			glog.Error("Failed to parse claims, the error is %v", err.Error())
 			return
 		}
 		c.Next()
 	}
 }
 
-func GenerateToken(c *gin.Context, user User) {
+func GenerateToken(c *gin.Context, user data.User) {
 	j := &JWT{
 		SigningKey: []byte("newtoken"),
 	}
 
-	claims := CustomClaims{
+	claims := data.CustomClaims{
 		Username: user.Username,
 		Role:     user.Role,
 		Path:     user.Path,
 		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: &jwt.NumericDate{Time: time.Now().Add(TOKEN_MAX_EXPIRE_HOUR * time.Hour)},
+			ExpiresAt: &jwt.NumericDate{Time: time.Now().Add(data.TOKEN_MAX_EXPIRE_HOUR * time.Hour)},
 		},
 	}
 
 	token, err := j.CreateToken(claims)
 
 	if err != nil {
-		c.JSON(http.StatusOK, gin.H{
-			"status": -1,
-			"msg":    err.Error(),
+		c.JSON(http.StatusMethodNotAllowed, gin.H{
+			"code:":     http.StatusMethodNotAllowed,
+			"message: ": err.Error(),
 		})
+		glog.Error("Failed to create token, the error is %v", err.Error())
 		return
 	}
 
 	glog.Info(token)
 
-	data := LoginResult{
+	data := data.LoginResult{
 		User:  user,
 		Token: token,
 	}
 	c.JSON(http.StatusOK, gin.H{
-		"status": 0,
-		"msg":    "登录成功！",
-		"data":   data,
+		"code":    http.StatusOK,
+		"message": "Succeed to login",
+		"data":    data,
 	})
 }
 
 // GetDataByTime 一个需要token认证的测试接口
 func GetDataByTime(c *gin.Context) {
-	claims := c.MustGet("claims").(*CustomClaims)
+	claims := c.MustGet("claims").(*data.CustomClaims)
 	if claims != nil {
 		c.JSON(http.StatusOK, gin.H{
-			"status": 0,
-			"msg":    "token有效",
-			"data":   claims,
+			"code":    http.StatusOK,
+			"message": "Token works",
+			"data":    claims,
 		})
 	}
 }

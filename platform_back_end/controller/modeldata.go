@@ -3,10 +3,11 @@ package controller
 import (
 	"bytes"
 	"encoding/binary"
-	"hash/crc32"
+	"fmt"
 	"io"
 	"net/http"
 	"os"
+	"platform_back_end/data"
 	"platform_back_end/tools"
 	"strings"
 
@@ -17,67 +18,44 @@ import (
 	"github.com/Applifier/go-tensorflow/types/tensorflow/core/util"
 )
 
-const (
-	maskDelta = 0xa282ead8
-
-	headerSize  = 12
-	footerSize  = 4
-	testPrefix  = "test_loss"
-	trainPrefix = "train_loss"
-	accuracy    = "test_accuracy"
-
-	testLossFile  = "test_loss_all.txt"
-	trainLossFile = "train_loss_all.txt"
-	accFile       = "acc.txt"
-)
-
-var crc32c = crc32.MakeTable(crc32.Castagnoli)
-
-// 当event file头部或者尾部的检验值非法时的返回值
-var ErrInvalidChecksum = errors.New("invalid crc")
-
-// 读取TFEvents的结构体
-type Reader struct {
-	r   io.Reader
-	buf *bytes.Buffer
-}
-
-type EVData struct {
-	Logdir string `json:"logdir"`
-}
+type Reader data.Reader
 
 func NewReader(r io.Reader) *Reader {
 	return &Reader{
-		r:   r,
-		buf: bytes.NewBuffer(nil),
+		R:   r,
+		Buf: bytes.NewBuffer(nil),
 	}
 }
 
 func (r *Reader) Next() (*util.Event, error) {
-	f := r.r
-	buf := r.buf
+	f := r.R
+	buf := r.Buf
 	buf.Reset()
 
-	_, err := io.CopyN(buf, f, headerSize)
+	_, err := io.CopyN(buf, f, data.HeaderSize)
 	if err != nil {
+		glog.Error("Failed to copy the useless info of event file")
 		return nil, err
 	}
 
 	header := buf.Bytes()
 
 	crc := binary.LittleEndian.Uint32(header[8:12])
-	if !verifyChecksum(header[0:8], crc) {
-		return nil, errors.Wrap(ErrInvalidChecksum, "length")
+	if !tools.VerifyChecksum(header[0:8], crc) {
+		glog.Error("Failed to check the crc of event file, the error is %v", data.ErrInvalidChecksum.Error())
+		return nil, errors.Wrap(data.ErrInvalidChecksum, "length")
 	}
 
 	length := binary.LittleEndian.Uint64(header[0:8])
 	buf.Reset()
 
 	if _, err = io.CopyN(buf, f, int64(length)); err != nil {
+		glog.Error("Failed to copy the header of event file")
 		return nil, err
 	}
 
-	if _, err = io.CopyN(buf, f, footerSize); err != nil {
+	if _, err = io.CopyN(buf, f, data.FooterSize); err != nil {
+		glog.Error("Failed to copy the tail of event file")
 		return nil, err
 	}
 
@@ -85,8 +63,9 @@ func (r *Reader) Next() (*util.Event, error) {
 
 	footer := payload[length:]
 	crc = binary.LittleEndian.Uint32(footer)
-	if !verifyChecksum(payload[:length], crc) {
-		return nil, errors.Wrap(ErrInvalidChecksum, "payload")
+	if !tools.VerifyChecksum(payload[:length], crc) {
+		glog.Error("Failed to check the crc of event file, the error is %v", data.ErrInvalidChecksum.Error())
+		return nil, errors.Wrap(data.ErrInvalidChecksum, "payload")
 	}
 
 	ev := &util.Event{}
@@ -94,29 +73,26 @@ func (r *Reader) Next() (*util.Event, error) {
 	return ev, ev.Unmarshal(payload[0:length])
 }
 
-func verifyChecksum(data []byte, crcMasked uint32) bool {
-	rot := crcMasked - maskDelta
-	unmaskedCrc := ((rot >> 17) | (rot << 15))
-
-	crc := crc32.Checksum(data, crc32c)
-
-	return crc == unmaskedCrc
-}
-
 func GetData(c *gin.Context) {
-	var evdata EVData
+	var evdata data.EVData
 	err_bind := c.ShouldBindJSON(&evdata)
 	if err_bind != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err_bind.Error()})
-		glog.Error("Failed to parse data form request, the error is %s", err_bind)
+		c.JSON(http.StatusBadRequest, gin.H{
+			"code: ":    http.StatusBadRequest,
+			"message: ": fmt.Sprintf("Invalid request payload, err is %v", err_bind.Error()),
+		})
+		glog.Error("Method GetData gets invalid request payload")
 		return
 	}
 
 	testfile := evdata.Logdir
 	f, err_open := os.Open(testfile)
 	if err_open != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err_open.Error()})
-		glog.Error("Failed to open log dir, the error is ", err_open.Error())
+		c.JSON(http.StatusMethodNotAllowed, gin.H{
+			"code:":   http.StatusMethodNotAllowed,
+			"message": err_open.Error(),
+		})
+		glog.Error("Failed to open log dir, the error is %v", err_open.Error())
 		return
 	}
 	defer f.Close()
@@ -130,19 +106,19 @@ func GetData(c *gin.Context) {
 			if err == io.EOF {
 				break
 			} else if err != nil {
-				glog.Error("Failed to read event file, the error is ", err.Error())
+				glog.Error("Failed to read event file, the error is %v", err.Error())
 			}
 		}
 		events = append(events, ev)
 	}
 
-	test_loss, _ := os.Create(testLossFile)
+	test_loss, _ := os.Create(data.TestLossFile)
 	defer test_loss.Close()
 
-	train_loss, _ := os.Create(trainLossFile)
+	train_loss, _ := os.Create(data.TrainLossFile)
 	defer train_loss.Close()
 
-	acc, _ := os.Create(accFile)
+	acc, _ := os.Create(data.AccFile)
 	defer acc.Close()
 
 	for i := range events {
@@ -150,36 +126,42 @@ func GetData(c *gin.Context) {
 		if s != nil {
 			for j := range s.Value {
 				tag := s.Value[j].Tag
-				if strings.HasPrefix(tag, testPrefix) {
+				if strings.HasPrefix(tag, data.TestPrefix) {
 					_, err := test_loss.WriteString(tag + " " + tools.FloatToString(s.Value[j].GetSimpleValue()) + "\n")
 					if err != nil {
-						glog.Error("Failed to get test loss value from event, the error is ", err.Error())
+						glog.Error("Failed to get test loss value from event, the error is %v", err.Error())
 					}
-				} else if strings.HasPrefix(tag, trainPrefix) {
+				} else if strings.HasPrefix(tag, data.TrainPrefix) {
 					_, err := train_loss.WriteString(tag + " " + tools.FloatToString(s.Value[j].GetSimpleValue()) + "\n")
 					if err != nil {
-						glog.Error("Failed to get train loss value from event, the error is ", err.Error())
+						glog.Error("Failed to get train loss value from event, the error is %v", err.Error())
 					}
-				} else if strings.HasPrefix(tag, accuracy) {
+				} else if strings.HasPrefix(tag, data.Accuracy) {
 					_, err := acc.WriteString(tag + " " + tools.FloatToString(s.Value[j].GetSimpleValue()) + "\n")
 					if err != nil {
-						glog.Error("Failed to get acc value from event, the error is ", err.Error())
+						glog.Error("Failed to get acc value from event, the error is %v", err.Error())
 					}
 				}
 			}
 		}
 	}
 
-	err := tools.CalculateAvg(testLossFile)
+	err := tools.CalculateAvg(data.TestLossFile)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		glog.Error("Failed to calculate test loss avg, the err is ", err.Error())
+		c.JSON(http.StatusMethodNotAllowed, gin.H{
+			"code: ":   http.StatusMethodNotAllowed,
+			"message:": err.Error(),
+		})
+		glog.Error("Failed to calculate test loss avg, the err is %v", err.Error())
 		return
 	}
-	err = tools.CalculateAvg(trainLossFile)
+	err = tools.CalculateAvg(data.TrainLossFile)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		glog.Error("Failed to calculate train loss avg, the err is ", err.Error())
+		c.JSON(http.StatusMethodNotAllowed, gin.H{
+			"code: ":   http.StatusMethodNotAllowed,
+			"message:": err.Error(),
+		})
+		glog.Error("Failed to calculate train loss avg, the err is %v", err.Error())
 		return
 	}
 
