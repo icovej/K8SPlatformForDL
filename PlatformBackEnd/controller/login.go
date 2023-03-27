@@ -1,8 +1,8 @@
 package controller
 
 import (
+	"PlatformBackEnd/tools"
 	"net/http"
-	"platform_back_end/tools"
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang/glog"

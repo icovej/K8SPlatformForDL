@@ -4,7 +4,7 @@
 
 ## First----Build Kubernetes Cluster
 
-Click [here](https://github.com/icovej/biyesheji/blob/master/platform_back_end/build_k8s_cluster.md)
+Click [here](https://github.com/icovej/biyesheji/blob/master/PlatformBackEnd/build_k8s_cluster.md)
 
 ## Second----Run platform
 

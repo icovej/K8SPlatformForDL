@@ -1,11 +1,10 @@
 package controller
 
 import (
-	"context"
+	"PlatformBackEnd/data"
+	"PlatformBackEnd/tools"
 	"fmt"
 	"net/http"
-	"platform_back_end/data"
-	"platform_back_end/tools"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
@@ -194,16 +193,8 @@ func CreatePod(c *gin.Context) {
 	}
 
 	// create pod
-	clientset, err_k8s := tools.InitK8S()
-	if err_k8s != nil {
-		c.JSON(http.StatusMethodNotAllowed, gin.H{
-			"code: ":    http.StatusMethodNotAllowed,
-			"message: ": err_k8s.Error(),
-		})
-		glog.Error("Failed to start k8s %v", err_k8s)
-		return
-	}
-	pod_container, err := clientset.CoreV1().Pods(pod.Namespace).Create(context.Background(), newPod, metav1.CreateOptions{})
+	// create pod
+	pod_container, err := tools.CreatePod(pod, newPod)
 	if err != nil {
 		c.JSON(http.StatusMethodNotAllowed, gin.H{
 			"code: ":    http.StatusMethodNotAllowed,

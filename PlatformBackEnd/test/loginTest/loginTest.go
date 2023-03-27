@@ -36,7 +36,7 @@ func Login(c *gin.Context) {
 	username := c.PostForm("username")
 	password := c.PostForm("password")
 
-	users, err := loadUsers("/Users/jiangyiming/Desktop/k8s_bishe/platform_back_end/test/users.json")
+	users, err := loadUsers("/Users/jiangyiming/Desktop/k8s_bishe/PlatformBackEnd/test/users.json")
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		glog.Error("Failed to load saved users info")

@@ -1,6 +1,7 @@
 package tools
 
 import (
+	"PlatformBackEnd/data"
 	"bufio"
 	"context"
 	"encoding/json"
@@ -14,24 +15,30 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"platform_back_end/data"
 	"runtime"
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/NVIDIA/gpu-monitoring-tools/bindings/go/nvml"
 	"github.com/docker/docker/client"
 	"github.com/gin-gonic/gin"
 	"github.com/golang/glog"
 	"github.com/shirou/gopsutil/mem"
+	corev1 "k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/util/homedir"
+	"k8s.io/client-go/util/retry"
+	"k8s.io/cri-api/pkg/errors"
 )
 
 // Init docker client
-func InitDocker() (*client.Client, error) {
+func initDocker() (*client.Client, error) {
 	dockerClient, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 	if err != nil {
 		glog.Error("Failed to init docker client, the error is %v", err)
@@ -49,14 +56,16 @@ func InitDocker() (*client.Client, error) {
 }
 
 // init Kubernetes client
-func InitK8S() (*kubernetes.Clientset, error) {
+func initK8S() (*kubernetes.Clientset, error) {
 	var kubeconfig *string
 	if home := homedir.HomeDir(); home != "" {
 		kubeconfig = flag.String("kubeconfig", filepath.Join(home, ".kube", "config"), "(optional) absolute path to the kubeconfig file")
 	} else {
 		kubeconfig = flag.String("kubeconfig", "", "absolute path to the kubeconfig file")
 	}
-	flag.Parse()
+
+	// var p string = "/home/gpu-server/.kube/config"
+	// kubeconfig = &p
 
 	// Use kubeconfig context to load config file
 	config, err_config := clientcmd.BuildConfigFromFlags("", *kubeconfig)
@@ -73,6 +82,105 @@ func InitK8S() (*kubernetes.Clientset, error) {
 	}
 
 	return clientset, nil
+}
+
+func CreatePod(poddata data.PodData, pod *corev1.Pod) (*v1.Pod, error) {
+	clientset, err := initK8S()
+	if err != nil {
+		glog.Error("Failed to start k8s, the error is %v", err.Error())
+		return nil, err
+	}
+	pod_container, err := clientset.CoreV1().Pods(poddata.Namespace).Create(context.Background(), pod, metav1.CreateOptions{})
+	if err != nil {
+		glog.Error("Failed to create pod, the error is %v", err.Error())
+		return nil, err
+	}
+	return pod_container, nil
+}
+
+func GetAllNamespace() ([]string, error) {
+	clientset, err := initK8S()
+	if err != nil {
+		glog.Error("Failed to start k8s, the error is %v", err.Error())
+		return nil, err
+	}
+
+	var nameSpaces []string
+	namespace, err := clientset.CoreV1().Namespaces().List(context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		glog.Error("Failed to list ns, the error is %v", err.Error())
+		return nil, err
+	}
+	for _, ns := range namespace.Items {
+		nameSpaces = append(nameSpaces, ns.Name)
+	}
+	return nameSpaces, nil
+}
+
+func GetAllPod(namespace string) ([]map[string]interface{}, error) {
+	clientset, err := initK8S()
+	if err != nil {
+		glog.Error("Failed to start k8s, the error is %v", err.Error())
+		return nil, err
+	}
+
+	pods, err := clientset.CoreV1().Pods(namespace).List(context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		glog.Error("Failed to list ns, the error is %v", err.Error())
+	}
+
+	podList := make([]map[string]interface{}, 0, len(pods.Items))
+	for _, pod := range pods.Items {
+		createdTime := pod.GetCreationTimestamp().Time
+		ageInDays := int(time.Since(createdTime).Hours() / 24)
+		podInfo := map[string]interface{}{
+			"name":      pod.ObjectMeta.Name,
+			"ageInDays": ageInDays,
+		}
+		podList = append(podList, podInfo)
+	}
+	return podList, nil
+}
+
+func ClearExpiredPod(namespace string) error {
+	clientset, err := initK8S()
+	if err != nil {
+		glog.Error("Failed to start k8s, the error is %v", err.Error())
+		return err
+	}
+
+	go func() {
+		for {
+			err := wait.ExponentialBackoff(retry.DefaultBackoff, func() (bool, error) {
+				// 获取所有 Pod
+				pods, err := clientset.CoreV1().Pods(namespace).List(context.Background(), metav1.ListOptions{})
+				if err != nil {
+					return false, err
+				}
+
+				// 遍历 Pod 并删除超过十分钟的
+				for _, pod := range pods.Items {
+					if pod.ObjectMeta.CreationTimestamp.Add(1 * time.Minute).Before(time.Now()) {
+						err := clientset.CoreV1().Pods(pod.ObjectMeta.Namespace).Delete(context.Background(), pod.ObjectMeta.Name, metav1.DeleteOptions{})
+						if err != nil {
+							if errors.IsNotFound(err) {
+								continue
+							}
+							return false, err
+						}
+					}
+				}
+
+				return true, nil
+			})
+			if err != nil {
+				fmt.Println("", err)
+			}
+			time.Sleep(1 * time.Minute)
+		}
+	}()
+
+	return nil
 }
 
 // Get mem and GPU

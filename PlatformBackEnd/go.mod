@@ -5,10 +5,17 @@ go 1.19
 require (
 	github.com/docker/docker v23.0.1+incompatible
 	github.com/gin-gonic/gin v1.9.0
+	github.com/golang-jwt/jwt/v4 v4.5.0
 	github.com/golang/glog v1.1.0
 	k8s.io/api v0.26.2
 	k8s.io/apimachinery v0.26.2
 	k8s.io/client-go v0.26.2
+	k8s.io/cri-api v0.26.3
+)
+
+require (
+	google.golang.org/genproto v0.0.0-20220502173005-c8bf987b8c21 // indirect
+	google.golang.org/grpc v1.49.0 // indirect
 )
 
 require (
@@ -18,7 +25,6 @@ require (
 	github.com/bytedance/sonic v1.8.0 // indirect
 	github.com/chenzhuoyu/base64x v0.0.0-20221115062448-fe3a3abad311 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
-	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/docker/distribution v2.8.1+incompatible // indirect
 	github.com/docker/go-connections v0.4.0 // indirect
 	github.com/docker/go-units v0.5.0 // indirect

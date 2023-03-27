@@ -1,10 +1,10 @@
 package main
 
 import (
+	"PlatformBackEnd/controller"
+	"PlatformBackEnd/data"
+	"PlatformBackEnd/tools"
 	"flag"
-	"platform_back_end/controller"
-	"platform_back_end/data"
-	"platform_back_end/tools"
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang/glog"
@@ -46,6 +46,9 @@ func main() {
 
 	// 获取训练模型的损失值和正确率
 	router.POST("/data", controller.GetData)
+
+	// 监控pod
+	router.POST("/monitor", controller.MonitorPod)
 
 	router.Run(":8080")
 }

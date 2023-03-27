@@ -1,14 +1,14 @@
 package controller
 
 import (
+	"PlatformBackEnd/data"
+	"PlatformBackEnd/tools"
 	"bytes"
 	"encoding/binary"
 	"fmt"
 	"io"
 	"net/http"
 	"os"
-	"platform_back_end/data"
-	"platform_back_end/tools"
 	"strings"
 
 	"github.com/gin-gonic/gin"

@@ -74,7 +74,7 @@ func RegisterHandler(c *gin.Context) {
 
 func readUsers() ([]NormalUser, error) {
 	// 从文件中读取用户信息
-	data, err := ioutil.ReadFile("/Users/jiangyiming/Desktop/k8s_bishe/platform_back_end/test/registertest/users.json")
+	data, err := ioutil.ReadFile("/Users/jiangyiming/Desktop/k8s_bishe/PlatformBackEnd/test/registertest/users.json")
 	if err != nil {
 		return nil, err
 	}
@@ -100,7 +100,7 @@ func writeUsers(users []NormalUser) error {
 	}
 
 	// 将JSON数据写入文件
-	err = ioutil.WriteFile("/Users/jiangyiming/Desktop/k8s_bishe/platform_back_end/test/registertest/users.json", data, 0644)
+	err = ioutil.WriteFile("/Users/jiangyiming/Desktop/k8s_bishe/PlatformBackEnd/test/registertest/users.json", data, 0644)
 	if err != nil {
 		return err
 	}

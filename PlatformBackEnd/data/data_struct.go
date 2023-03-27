@@ -161,3 +161,7 @@ type CustomClaims struct {
 type JWT struct {
 	SigningKey []byte
 }
+
+type Monitor struct {
+	Namespace string `json:"namespace"`
+}

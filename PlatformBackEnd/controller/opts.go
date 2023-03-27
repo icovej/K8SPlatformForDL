@@ -1,8 +1,8 @@
 package controller
 
 import (
+	"PlatformBackEnd/data"
 	"net/http"
-	"platform_back_end/data"
 
 	"github.com/gin-gonic/gin"
 )
