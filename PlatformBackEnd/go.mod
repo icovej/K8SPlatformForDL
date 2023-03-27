@@ -1,4 +1,4 @@
-module platform_back_end
+module PlatformBackEnd
 
 go 1.19
 
