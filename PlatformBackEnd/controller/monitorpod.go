@@ -32,8 +32,19 @@ func MonitorPod(c *gin.Context) {
 		return
 	}
 
+	nsList, err := tools.GetAllNamespace()
+	if err != nil {
+		c.JSON(http.StatusMethodNotAllowed, gin.H{
+			"code: ":    http.StatusMethodNotAllowed,
+			"message: ": err.Error(),
+		})
+		glog.Error("Failed to get all namespace, the error is %v", err)
+		return
+	}
+
 	c.JSON(http.StatusOK, gin.H{
-		"code: ": http.StatusOK,
-		"pods: ": podList,
+		"code: ":       http.StatusOK,
+		"pods: ":       podList,
+		"namespaces: ": nsList,
 	})
 }
