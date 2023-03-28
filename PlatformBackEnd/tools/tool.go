@@ -26,7 +26,6 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/golang/glog"
 	"github.com/shirou/gopsutil/mem"
-	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -84,7 +83,7 @@ func initK8S() (*kubernetes.Clientset, error) {
 	return clientset, nil
 }
 
-func CreatePod(poddata data.PodData, pod *corev1.Pod) (*v1.Pod, error) {
+func CreatePod(poddata data.PodData, pod *v1.Pod) (*v1.Pod, error) {
 	clientset, err := initK8S()
 	if err != nil {
 		glog.Error("Failed to start k8s, the error is %v", err.Error())
