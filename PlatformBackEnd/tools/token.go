@@ -156,7 +156,6 @@ func GenerateToken(c *gin.Context, user data.User) {
 	})
 }
 
-// GetDataByTime 一个需要token认证的测试接口
 func GetDataByTime(c *gin.Context) {
 	claims := c.MustGet("claims").(*data.CustomClaims)
 	if claims != nil {
