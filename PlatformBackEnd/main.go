@@ -54,5 +54,8 @@ func main() {
 	router.GET("/list", controller.GetAllFiles)
 	router.DELETE("/delete", controller.DeleteFile)
 
+	// Get container data
+	router.POST("/ws", controller.GetContainerData)
+
 	router.Run(":8080")
 }

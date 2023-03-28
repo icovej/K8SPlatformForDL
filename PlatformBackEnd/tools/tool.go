@@ -10,6 +10,7 @@ import (
 	"hash/crc32"
 	"io"
 	"io/ioutil"
+	"log"
 	"math"
 	"net/http"
 	"os"
@@ -25,15 +26,18 @@ import (
 	"github.com/docker/docker/client"
 	"github.com/gin-gonic/gin"
 	"github.com/golang/glog"
+	"github.com/gorilla/websocket"
 	"github.com/shirou/gopsutil/mem"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/util/homedir"
 	"k8s.io/client-go/util/retry"
 	"k8s.io/cri-api/pkg/errors"
+	"k8s.io/metrics/pkg/client/clientset/versioned"
 )
 
 // Init docker client
@@ -54,8 +58,7 @@ func initDocker() (*client.Client, error) {
 	return dockerClient, nil
 }
 
-// init Kubernetes client
-func initK8S() (*kubernetes.Clientset, error) {
+func getConfig() (*rest.Config, error) {
 	var kubeconfig *string
 	if home := homedir.HomeDir(); home != "" {
 		kubeconfig = flag.String("kubeconfig", filepath.Join(home, ".kube", "config"), "(optional) absolute path to the kubeconfig file")
@@ -73,6 +76,17 @@ func initK8S() (*kubernetes.Clientset, error) {
 		return nil, err_config
 	}
 
+	return config, nil
+}
+
+// init Kubernetes client
+func initK8S() (*kubernetes.Clientset, error) {
+	config, err := getConfig()
+	if err != nil {
+		glog.Error("Failed to get config, the error is %v", err.Error())
+		return nil, err
+	}
+
 	// build clientset
 	clientset, err_client := kubernetes.NewForConfig(config)
 	if err_client != nil {
@@ -81,6 +95,22 @@ func initK8S() (*kubernetes.Clientset, error) {
 	}
 
 	return clientset, nil
+}
+
+func initMetricClient() (*versioned.Clientset, error) {
+	config, err := getConfig()
+	if err != nil {
+		glog.Error("Failed to get config, the error is %v", err.Error())
+		return nil, err
+	}
+
+	metricsClient, err := versioned.NewForConfig(config)
+	if err != nil {
+		log.Fatalf("Error creating Metrics client: %v", err)
+		return nil, err
+	}
+
+	return metricsClient, nil
 }
 
 func CreatePod(poddata data.PodData, pod *v1.Pod) (*v1.Pod, error) {
@@ -485,4 +515,86 @@ func GiBToBytes(gib float64) int64 {
 
 func MiBToBytes(mib float64) int64 {
 	return int64(mib * math.Pow(1024, 2))
+}
+
+func GetContainerData(conn *websocket.Conn) {
+	clientset, err := initK8S()
+	if err != nil {
+		glog.Error("Failed to start k8s, the error is %v", err.Error())
+		return
+	}
+	pods, err := clientset.CoreV1().Pods("").List(context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		glog.Error("Error getting pod list: %v", err)
+		return
+	}
+
+	metricsClient, err := initMetricClient()
+	if err != nil {
+		glog.Error("Failed to start metricsClient, the error is %v", err.Error())
+		return
+	}
+
+	for _, pod := range pods.Items {
+		for _, container := range pod.Spec.Containers {
+			// 获取CPU、GPU、内存等信息
+			metrics, err := metricsClient.MetricsV1beta1().PodMetricses(pod.Namespace).Get(context.Background(), pod.Name, metav1.GetOptions{})
+			if err != nil {
+				glog.Error("Failed to get pod metrics: %v", err.Error())
+				continue
+			}
+
+			for _, containerMetrics := range metrics.Containers {
+				if containerMetrics.Name == container.Name {
+					cpuUsage := containerMetrics
+					// CPU usage
+					cpu := cpuUsage.Usage.Cpu().MilliValue()
+					// GPU usage
+					gpu, err := getGPUMetrics(container.Name)
+					if err != nil {
+						glog.Error("Failed to get GPU metrics: %v", err.Error())
+						continue
+					}
+					// Mem usage
+					mem := containerMetrics.Usage.Memory().Value()
+					data := map[string]interface{}{
+						"pod":       pod.Name,
+						"container": container.Name,
+						"cpu":       cpu,
+						"gpu":       gpu,
+						"memory":    mem,
+						"timestamp": time.Now().UnixNano() / int64(time.Millisecond),
+					}
+
+					jsonData, err := json.Marshal(data)
+					if err != nil {
+						glog.Error("Failed to encode JSON: %v", err.Error())
+						continue
+					}
+
+					err = conn.WriteMessage(websocket.TextMessage, jsonData)
+					if err != nil {
+						glog.Error("Failed to write WebSocket message: %v", err.Error())
+						break
+					}
+				}
+			}
+		}
+	}
+}
+
+func getGPUMetrics(containerName string) (int64, error) {
+	// cmd := exec.Command("nvidia-smi", "--query-gpu=memory.used", "--format=csv,noheader,nounits")
+	// cmd.Env = append(os.Environ(), "CUDA_VISIBLE_DEVICES="+containerName)
+	// output, err := cmd.Output()
+	output, err := ExecCommand("nvidia-smi", "--query-gpu=memory.used", "--format=csv,noheader,nounits")
+	if err != nil {
+		glog.Error("Failed to run gpu cmd, the error is %v", err.Error())
+		return 0, err
+	}
+	gpuUsage, err := strconv.ParseInt(strings.TrimSpace(string(output)), 10, 64)
+	if err != nil {
+		glog.Error("Failed to get gpu data, the error is %v", err.Error())
+	}
+	return gpuUsage, nil
 }
