@@ -50,5 +50,9 @@ func main() {
 	// 监控pod
 	router.POST("/monitor", controller.MonitorPod)
 
+	// 目录的操作
+	router.GET("/list", controller.GetAllFiles)
+	router.DELETE("/delete", controller.DeleteFile)
+
 	router.Run(":8080")
 }
