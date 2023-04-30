@@ -8,7 +8,7 @@ ifeq ($(shell uname -p),arm)
 endif
 
 # Definitions
-IMAGE                   := registry.cn-hangzhou.aliyuncs.com/acs/gpushare-scheduler-extender
+IMAGE                   := gpu-share
 GIT_VERSION             := $(shell git rev-parse --short=7 HEAD)
 COMMIT_ID 				:= $(shell git describe --match=NeVeRmAtCh --abbrev=99 --tags --always --dirty)
 GOLANG_DOCKER_IMAGE     := golang:1.19
@@ -17,7 +17,7 @@ build-server:
 	go build -o bin/gpushare-sche-extender ./cmd/main.go
 
 build-image:
-	${DockerBuild} -t ${IMAGE}:${GIT_VERSION} -f scripts/build/Dockerfile .
+	${DockerBuild} -t icovej/${IMAGE}:1.0 -f scripts/build/Dockerfile .
 
 local-build-image:
 	GOOS=linux GOARCH=amd64 go build -o bin/gpushare-sche-extender ./cmd/main.go
