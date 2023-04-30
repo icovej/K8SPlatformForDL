@@ -4,7 +4,6 @@ import (
 	"PlatformBackEnd/data"
 	"PlatformBackEnd/tools"
 	"fmt"
-	"net/http"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -14,11 +13,11 @@ import (
 // Get all dir infor which user request
 func GetDirInfo(c *gin.Context) {
 	var Dir data.DirData
-	err_bind := c.ShouldBindJSON(&Dir)
-	if err_bind != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"code: ":    http.StatusBadRequest,
-			"message: ": fmt.Sprintf("Invalid request payload, err is %v", err_bind.Error()),
+	err := c.ShouldBindJSON(&Dir)
+	if err != nil {
+		c.JSON(data.API_PARAMETER_ERROR, gin.H{
+			"code: ":    data.API_PARAMETER_ERROR,
+			"message: ": fmt.Sprintf("Invalid request payload, err is %v", err.Error()),
 		})
 		glog.Error("Method GetDirInfo gets invalid request payload")
 		return
@@ -26,13 +25,13 @@ func GetDirInfo(c *gin.Context) {
 
 	dir := Dir.Dir
 	depth := Dir.Depth
-	output, err_exec := tools.ExecCommand("du -h --max-depth=", depth, dir)
-	if err_exec != nil {
-		c.JSON(http.StatusMethodNotAllowed, gin.H{
-			"code: ":    http.StatusMethodNotAllowed,
-			"message: ": err_exec.Error(),
+	output, err := tools.ExecCommand("du -h --max-depth=", depth, dir)
+	if err != nil {
+		c.JSON(data.OPERATION_FAILURE, gin.H{
+			"code: ":    data.OPERATION_FAILURE,
+			"message: ": err.Error(),
 		})
-		glog.Error("Failed to get %v info, the error is %v", dir, err_exec)
+		glog.Error("Failed to get %v info, the error is %v", dir, err)
 		return
 	}
 
@@ -45,5 +44,9 @@ func GetDirInfo(c *gin.Context) {
 		fields := strings.Split(line, "\t")
 		result[fields[1]] = fields[0]
 	}
-	c.JSON(http.StatusOK, result)
+	c.JSON(data.SUCCESS, gin.H{
+		"code:":    data.SUCCESS,
+		"message:": "Succeed to get fir info",
+		"data:":    result,
+	})
 }

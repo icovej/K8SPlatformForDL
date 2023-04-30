@@ -2,7 +2,6 @@ package controller
 
 import (
 	"PlatformBackEnd/data"
-	"net/http"
 
 	"github.com/gin-gonic/gin"
 )
@@ -44,8 +43,8 @@ func OperationInfo(c *gin.Context) {
 		},
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"code": http.StatusOK,
+	c.JSON(data.SUCCESS, gin.H{
+		"code": data.SUCCESS,
 		"list": list,
 	})
 	return

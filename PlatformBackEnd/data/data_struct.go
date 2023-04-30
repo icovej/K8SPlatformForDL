@@ -10,6 +10,9 @@ import (
 )
 
 const (
+	// user data file
+	UserFile = "/etc/User.json"
+
 	// the metric of nvidia/com
 	// the value is set by Kubernetes
 	GpuMetricName = "nvidia.com/gpu"

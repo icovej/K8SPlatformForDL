@@ -352,6 +352,16 @@ func CreatePath(dirpath string, perm os.FileMode) error {
 	return nil
 }
 
+// Create File
+func CreateFile(path string) error {
+	_, err := os.Create(path)
+	if err == nil {
+		glog.Error("Failed to create user data file")
+		return err
+	}
+	return nil
+}
+
 // float32 to string
 func FloatToString(input_num float32) string {
 	// to convert a float number to a string
@@ -464,7 +474,7 @@ func VerifyChecksum(d []byte, crcMasked uint32) bool {
 }
 
 func CheckUsers() ([]data.User, error) {
-	datas, err := ioutil.ReadFile("/home/gpu-server/set_k8s/biyesheji/PlatformBackEnd/test/users.json")
+	datas, err := ioutil.ReadFile(data.UserFile)
 	if err != nil {
 		glog.Error("Failed to read file, the error is %v", err.Error())
 		return nil, err
@@ -484,13 +494,13 @@ func CheckUsers() ([]data.User, error) {
 }
 
 func WriteUsers(users []data.User) error {
-	data, err := json.Marshal(users)
+	user_data, err := json.Marshal(users)
 	if err != nil {
 		glog.Error("Failed to marshal user data, the error is %v", err.Error())
 		return err
 	}
 
-	err = ioutil.WriteFile("/home/gpu-server/set_k8s/biyesheji/PlatformBackEnd/test/users.json", data, 0644)
+	err = ioutil.WriteFile(data.UserFile, user_data, 0644)
 	if err != nil {
 		glog.Error("Failed to write file, the error is %v", err.Error())
 		return err

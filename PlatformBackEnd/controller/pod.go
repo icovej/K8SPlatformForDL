@@ -4,7 +4,6 @@ import (
 	"PlatformBackEnd/data"
 	"PlatformBackEnd/tools"
 	"fmt"
-	"net/http"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
@@ -19,11 +18,11 @@ import (
 // It's a little bulky, we'll fix it
 func CreatePod(c *gin.Context) {
 	var pod data.PodData
-	err_bind := c.ShouldBindJSON(&pod)
-	if err_bind != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"code: ":    http.StatusBadRequest,
-			"message: ": fmt.Sprintf("Invalid request payload, err is %v", err_bind.Error()),
+	err := c.ShouldBindJSON(&pod)
+	if err != nil {
+		c.JSON(data.API_PARAMETER_ERROR, gin.H{
+			"code: ":    data.API_PARAMETER_ERROR,
+			"message: ": fmt.Sprintf("Invalid request payload, err is %v", err.Error()),
 		})
 		glog.Error("Method CreatePod gets invalid request payload")
 		return
@@ -64,8 +63,8 @@ func CreatePod(c *gin.Context) {
 
 	if (pod_Memory > int64(avaMem)) || (pod.Cpu > ac_str) || (pod.Gpu > ag_str) {
 		err := errors.New("sources required are larger than the avaliable!")
-		c.JSON(http.StatusBadRequest, gin.H{
-			"code: ":    http.StatusBadRequest,
+		c.JSON(data.OPERATION_FAILURE, gin.H{
+			"code: ":    data.OPERATION_FAILURE,
 			"message: ": err.Error(),
 		})
 		glog.Error("sources required are larger than the avaliable!")
@@ -74,68 +73,69 @@ func CreatePod(c *gin.Context) {
 
 	if (pod_Memory > pod_Lmemory) || (pod.Cpu > pod.Cpulim) || (pod.Gpu > pod.Gpulim) {
 		err := errors.New("sources required are larger than the limited!")
-		c.JSON(http.StatusBadRequest, gin.H{
-			"code: ":    http.StatusBadRequest,
+		c.JSON(data.OPERATION_FAILURE, gin.H{
+			"code: ":    data.OPERATION_FAILURE,
 			"message: ": err.Error(),
 		})
 		glog.Error("sources required are larger than the limited!")
+		return
 	}
 
 	// Parse mem、CPU and GPU to k8s mod
-	memReq, err_mem := resource.ParseQuantity(pod.Memory)
-	if err_mem != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"code: ":    http.StatusBadRequest,
-			"message: ": err_mem.Error(),
+	memReq, err := resource.ParseQuantity(pod.Memory)
+	if err != nil {
+		c.JSON(data.OPERATION_FAILURE, gin.H{
+			"code: ":    data.OPERATION_FAILURE,
+			"message: ": err.Error(),
 		})
-		glog.Error("Failed to parse mem, the error is %v", err_mem)
+		glog.Error("Failed to parse mem, the error is %v", err)
 		return
 	}
-	memLim, err_meml := resource.ParseQuantity(pod.Memlim)
-	if err_meml != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"code: ":    http.StatusBadRequest,
-			"message: ": err_meml.Error(),
+	memLim, err := resource.ParseQuantity(pod.Memlim)
+	if err != nil {
+		c.JSON(data.OPERATION_FAILURE, gin.H{
+			"code: ":    data.OPERATION_FAILURE,
+			"message: ": err.Error(),
 		})
-		glog.Error("Failed to parse mem, the error is %v", err_meml)
-		return
-	}
-
-	cpuReq, err_cpu := resource.ParseQuantity(pod.Cpu)
-	if err_cpu != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"code: ":    http.StatusBadRequest,
-			"message: ": err_cpu.Error(),
-		})
-		glog.Error("Failed to parse cpu, the error is %v", err_cpu)
-		return
-	}
-	cpuLim, err_cpul := resource.ParseQuantity(pod.Cpulim)
-	if err_cpul != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"code: ":    http.StatusBadRequest,
-			"message: ": err_cpul.Error(),
-		})
-		glog.Error("Failed to parse mem, the error is %v", err_cpul)
+		glog.Error("Failed to parse mem, the error is %v", err)
 		return
 	}
 
-	gpuReq, err_gpu := resource.ParseQuantity(pod.Gpu)
-	if err_gpu != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"code: ":    http.StatusBadRequest,
-			"message: ": err_gpu.Error(),
+	cpuReq, err := resource.ParseQuantity(pod.Cpu)
+	if err != nil {
+		c.JSON(data.OPERATION_FAILURE, gin.H{
+			"code: ":    data.OPERATION_FAILURE,
+			"message: ": err.Error(),
 		})
-		glog.Error("Failed to parse gpu, the error is %v", err_gpu)
+		glog.Error("Failed to parse cpu, the error is %v", err)
 		return
 	}
-	gpuLim, err_gpul := resource.ParseQuantity(pod.Gpulim)
-	if err_gpul != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"code: ":    http.StatusBadRequest,
-			"message: ": err_gpu.Error(),
+	cpuLim, err := resource.ParseQuantity(pod.Cpulim)
+	if err != nil {
+		c.JSON(data.OPERATION_FAILURE, gin.H{
+			"code: ":    data.OPERATION_FAILURE,
+			"message: ": err.Error(),
 		})
-		glog.Error("Failed to parse mem, the error is %v", err_gpul)
+		glog.Error("Failed to parse mem, the error is %v", err)
+		return
+	}
+
+	gpuReq, err := resource.ParseQuantity(pod.Gpu)
+	if err != nil {
+		c.JSON(data.OPERATION_FAILURE, gin.H{
+			"code: ":    data.OPERATION_FAILURE,
+			"message: ": err.Error(),
+		})
+		glog.Error("Failed to parse gpu, the error is %v", err)
+		return
+	}
+	gpuLim, err := resource.ParseQuantity(pod.Gpulim)
+	if err != nil {
+		c.JSON(data.OPERATION_FAILURE, gin.H{
+			"code: ":    data.OPERATION_FAILURE,
+			"message: ": err.Error(),
+		})
+		glog.Error("Failed to parse mem, the error is %v", err)
 		return
 	}
 
@@ -195,16 +195,16 @@ func CreatePod(c *gin.Context) {
 	// create pod
 	pod_container, err := tools.CreatePod(pod, newPod)
 	if err != nil {
-		c.JSON(http.StatusMethodNotAllowed, gin.H{
-			"code: ":    http.StatusMethodNotAllowed,
+		c.JSON(data.OPERATION_FAILURE, gin.H{
+			"code: ":    data.OPERATION_FAILURE,
 			"message: ": err.Error(),
 		})
 		glog.Error("Failed to create pod %v", err)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"code: ":    http.StatusOK,
+	c.JSON(data.SUCCESS, gin.H{
+		"code: ":    data.SUCCESS,
 		"message: ": fmt.Sprintf("Succeed to create pod, its name is %v", pod_container.GetObjectMeta().GetName()),
 	})
 }

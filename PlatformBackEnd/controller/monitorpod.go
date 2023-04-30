@@ -4,28 +4,27 @@ import (
 	"PlatformBackEnd/data"
 	"PlatformBackEnd/tools"
 	"fmt"
-	"net/http"
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang/glog"
 )
 
 func MonitorPod(c *gin.Context) {
-	var Mpod data.Monitor
-	err := c.ShouldBindJSON(&Mpod)
+	var mpod data.Monitor
+	err := c.ShouldBindJSON(&mpod)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"code: ":    http.StatusBadRequest,
+		c.JSON(data.API_PARAMETER_ERROR, gin.H{
+			"code: ":    data.API_PARAMETER_ERROR,
 			"message: ": fmt.Sprintf("Invalid request payload, err is %v", err.Error()),
 		})
 		glog.Error("Method GetDirInfo gets invalid request payload")
 		return
 	}
 
-	podList, err := tools.GetAllPod(Mpod.Namespace)
+	podList, err := tools.GetAllPod(mpod.Namespace)
 	if err != nil {
-		c.JSON(http.StatusMethodNotAllowed, gin.H{
-			"code: ":    http.StatusMethodNotAllowed,
+		c.JSON(data.API_PARAMETER_ERROR, gin.H{
+			"code: ":    data.API_PARAMETER_ERROR,
 			"message: ": err.Error(),
 		})
 		glog.Error("Failed to get pod info, the error is %v", err)
@@ -34,16 +33,17 @@ func MonitorPod(c *gin.Context) {
 
 	nsList, err := tools.GetAllNamespace()
 	if err != nil {
-		c.JSON(http.StatusMethodNotAllowed, gin.H{
-			"code: ":    http.StatusMethodNotAllowed,
+		c.JSON(data.API_PARAMETER_ERROR, gin.H{
+			"code: ":    data.API_PARAMETER_ERROR,
 			"message: ": err.Error(),
 		})
 		glog.Error("Failed to get all namespace, the error is %v", err)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"code: ":       http.StatusOK,
+	c.JSON(data.SUCCESS, gin.H{
+		"code: ":       data.SUCCESS,
+		"message:":     "Succeed to get pod info",
 		"pods: ":       podList,
 		"namespaces: ": nsList,
 	})

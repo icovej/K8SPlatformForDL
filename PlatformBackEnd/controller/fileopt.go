@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"PlatformBackEnd/data"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -46,8 +47,8 @@ func DeleteFile(c *gin.Context) {
 
 	fi, err := os.Stat(path)
 	if err != nil {
-		c.JSON(http.StatusMethodNotAllowed, gin.H{
-			"code: ":  http.StatusMethodNotAllowed,
+		c.JSON(data.OPERATION_FAILURE, gin.H{
+			"code: ":  data.OPERATION_FAILURE,
 			"error: ": err.Error(),
 		})
 		glog.Error("Failed to stat file/dir")
@@ -56,8 +57,8 @@ func DeleteFile(c *gin.Context) {
 	if fi.IsDir() {
 		err = os.RemoveAll(path)
 		if err != nil {
-			c.JSON(http.StatusMethodNotAllowed, gin.H{
-				"code: ":  http.StatusMethodNotAllowed,
+			c.JSON(data.OPERATION_FAILURE, gin.H{
+				"code: ":  data.OPERATION_FAILURE,
 				"error: ": err.Error(),
 			})
 			glog.Error("Failed to remove dir")
@@ -66,8 +67,8 @@ func DeleteFile(c *gin.Context) {
 	} else {
 		err = os.Remove(path)
 		if err != nil {
-			c.JSON(http.StatusMethodNotAllowed, gin.H{
-				"code: ":  http.StatusMethodNotAllowed,
+			c.JSON(data.OPERATION_FAILURE, gin.H{
+				"code: ":  data.OPERATION_FAILURE,
 				"error: ": err.Error(),
 			})
 			glog.Error("Failed to remove file")
@@ -75,8 +76,8 @@ func DeleteFile(c *gin.Context) {
 		}
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"code:":    http.StatusOK,
+	c.JSON(data.SUCCESS, gin.H{
+		"code:":    data.SUCCESS,
 		"message:": "Succeed to delete target",
 	})
 }

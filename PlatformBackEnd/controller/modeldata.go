@@ -7,7 +7,6 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io"
-	"net/http"
 	"os"
 	"strings"
 
@@ -75,24 +74,24 @@ func (r *Reader) Next() (*util.Event, error) {
 
 func GetData(c *gin.Context) {
 	var evdata data.EVData
-	err_bind := c.ShouldBindJSON(&evdata)
-	if err_bind != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"code: ":    http.StatusBadRequest,
-			"message: ": fmt.Sprintf("Invalid request payload, err is %v", err_bind.Error()),
+	err := c.ShouldBindJSON(&evdata)
+	if err != nil {
+		c.JSON(data.API_PARAMETER_ERROR, gin.H{
+			"code: ":    data.API_PARAMETER_ERROR,
+			"message: ": fmt.Sprintf("Invalid request payload, err is %v", err.Error()),
 		})
 		glog.Error("Method GetData gets invalid request payload")
 		return
 	}
 
 	testfile := evdata.Logdir
-	f, err_open := os.Open(testfile)
-	if err_open != nil {
-		c.JSON(http.StatusMethodNotAllowed, gin.H{
-			"code:":   http.StatusMethodNotAllowed,
-			"message": err_open.Error(),
+	f, err := os.Open(testfile)
+	if err != nil {
+		c.JSON(data.OPERATION_FAILURE, gin.H{
+			"code:":   data.OPERATION_FAILURE,
+			"message": err.Error(),
 		})
-		glog.Error("Failed to open log dir, the error is %v", err_open.Error())
+		glog.Error("Failed to open log dir, the error is %v", err.Error())
 		return
 	}
 	defer f.Close()
@@ -146,10 +145,10 @@ func GetData(c *gin.Context) {
 		}
 	}
 
-	err := tools.CalculateAvg(data.TestLossFile)
+	err = tools.CalculateAvg(data.TestLossFile)
 	if err != nil {
-		c.JSON(http.StatusMethodNotAllowed, gin.H{
-			"code: ":   http.StatusMethodNotAllowed,
+		c.JSON(data.OPERATION_FAILURE, gin.H{
+			"code: ":   data.OPERATION_FAILURE,
 			"message:": err.Error(),
 		})
 		glog.Error("Failed to calculate test loss avg, the err is %v", err.Error())
@@ -157,8 +156,8 @@ func GetData(c *gin.Context) {
 	}
 	err = tools.CalculateAvg(data.TrainLossFile)
 	if err != nil {
-		c.JSON(http.StatusMethodNotAllowed, gin.H{
-			"code: ":   http.StatusMethodNotAllowed,
+		c.JSON(data.OPERATION_FAILURE, gin.H{
+			"code: ":   data.OPERATION_FAILURE,
 			"message:": err.Error(),
 		})
 		glog.Error("Failed to calculate train loss avg, the err is %v", err.Error())

@@ -25,6 +25,8 @@ func main() {
 
 	defer glog.Flush()
 
+	_ = tools.CreateFile(data.UserFile)
+
 	// Init Gin
 	router := gin.Default()
 	router.Use(tools.Core())
