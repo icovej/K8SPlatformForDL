@@ -133,7 +133,7 @@ func GenerateToken(c *gin.Context, user data.User) {
 	}
 
 	token, err := j.CreateToken(claims)
-
+	fmt.Println(136)
 	if err != nil {
 		c.JSON(http.StatusMethodNotAllowed, gin.H{
 			"code:":     http.StatusMethodNotAllowed,
@@ -144,7 +144,7 @@ func GenerateToken(c *gin.Context, user data.User) {
 	}
 
 	glog.Info(token)
-
+	fmt.Println(147)
 	data := data.LoginResult{
 		User:  user,
 		Token: token,

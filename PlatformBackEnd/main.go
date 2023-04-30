@@ -5,6 +5,7 @@ import (
 	"PlatformBackEnd/data"
 	"PlatformBackEnd/tools"
 	"flag"
+	"fmt"
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang/glog"
@@ -12,43 +13,52 @@ import (
 
 func main() {
 	// parse cmdline
-	flag.Parse()
-
 	var srcfilepath = flag.String("srcfilepath", "", "the original dockerfile path")
 	data.Srcfilepath = *srcfilepath
 
 	var logdir = flag.String("logdir", "", "The path to save glog")
 	flag.Lookup("log_dir").Value.Set(*logdir)
 
+	var port = flag.String("userport", ":8080", "the port to listen the platform")
+	flag.Parse()
+	fmt.Println(*port)
+
 	defer glog.Flush()
 
-	// 初始化Gin框架
+	// Init Gin
 	router := gin.Default()
 	router.Use(tools.Core())
 
-	// 获取api操作信息
+	// Get API information
 	router.GET("/operation", controller.OperationInfo)
 
-	// 账号注册
+	// Registe
 	router.POST("/register", controller.RegisterHandler)
 
-	// 账号登陆
+	// Login
 	router.POST("/login", controller.Login)
 
-	// 查询目录容量
+	// Query Dir Info
 	router.GET("/search_dir", controller.GetDirInfo)
 
-	// 创建镜像
+	// Create Image
 	router.POST("/image", controller.CreateImage)
 
-	// 创建Pod
+	// Create Pod
 	router.POST("/pod", controller.CreatePod)
 
-	// 获取训练模型的损失值和正确率
+	// Get data of model training
 	router.POST("/data", controller.GetData)
 
-	// 监控pod
+	// Monite Pod
 	router.POST("/monitor", controller.MonitorPod)
 
-	router.Run(":8080")
+	// Handle Dir
+	router.GET("/list", controller.GetAllFiles)
+	router.DELETE("/delete", controller.DeleteFile)
+
+	// Get container data
+	router.POST("/ws", controller.GetContainerData)
+
+	router.Run(*port)
 }

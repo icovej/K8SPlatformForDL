@@ -144,6 +144,11 @@ type User struct {
 	Path     string `json:"path"`
 }
 
+type IP struct {
+	Master string   `json:"masterip"`
+	Node   []string `json:"nodeip"`
+}
+
 // JWT, when user login this platform, a token will be created and sent to platform
 type LoginResult struct {
 	Token string `json:"token"`
@@ -164,4 +169,9 @@ type JWT struct {
 
 type Monitor struct {
 	Namespace string `json:"namespace"`
+}
+
+type NodeIP struct {
+	Master string   `json:"MasterIP"`
+	Node   []string `json:"nodeip"`
 }
