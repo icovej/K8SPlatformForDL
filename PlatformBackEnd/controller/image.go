@@ -94,5 +94,4 @@ func CreateImage(c *gin.Context) {
 		"code: ":    http.StatusOK,
 		"message: ": fmt.Sprintf("Succeed to build image: %v", imageName),
 	})
-	return
 }

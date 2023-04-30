@@ -31,7 +31,6 @@ func CreatePod(c *gin.Context) {
 
 	// Get avaliable Mem, CPU and PU
 	var avaGPU uint64
-	m := make(map[int]uint64)
 	// the unit of avaMem and avaGPU is bytes, the unit of avaCPU is core
 	avaMem, avaCPU, m, _ := tools.GetAvailableMemoryAndGPU()
 	for i := range m {

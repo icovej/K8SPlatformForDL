@@ -5,6 +5,7 @@ import (
 	"PlatformBackEnd/tools"
 	"fmt"
 	"net/http"
+	"os"
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang/glog"
@@ -79,6 +80,17 @@ func RegisterHandler(c *gin.Context) {
 			"message: ": "Failed to write users file!",
 		})
 		glog.Error("Failed to write users file!")
+		return
+	}
+
+	// create user's path
+	err := os.MkdirAll("testdir/subdir", 0777)
+	if err != nil {
+		c.JSON(http.StatusMethodNotAllowed, gin.H{
+			"code: ":    http.StatusMethodNotAllowed,
+			"message: ": "Failed to create user's path!",
+		})
+		glog.Error("Failed to create user's path!, the error is %v", err.Error())
 		return
 	}
 
