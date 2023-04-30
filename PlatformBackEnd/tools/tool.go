@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"hash/crc32"
 	"io"
-	"io/ioutil"
 	"log"
 	"math"
 	"net/http"
@@ -289,14 +288,14 @@ func WriteAtBeginning(filename string, data []byte) error {
 	}
 	defer file.Close()
 
-	oldData, err := ioutil.ReadAll(file)
+	oldData, err := io.ReadAll(file)
 	if err != nil {
 		glog.Error("Failed to read file, the error is %v", err)
 		return err
 	}
 
 	newData := append(data, oldData...)
-	err = ioutil.WriteFile(filename, newData, 0644)
+	err = os.WriteFile(filename, newData, 0644)
 	if err != nil {
 		glog.Error("Failed to open write file, the error is %v", err)
 		return err
@@ -452,7 +451,7 @@ func Core() gin.HandlerFunc {
 }
 
 func LoadUsers(filename string) ([]data.User, error) {
-	bytes, err := ioutil.ReadFile(filename)
+	bytes, err := os.ReadFile(filename)
 	if err != nil {
 		return nil, err
 	}
@@ -474,7 +473,7 @@ func VerifyChecksum(d []byte, crcMasked uint32) bool {
 }
 
 func CheckUsers() ([]data.User, error) {
-	datas, err := ioutil.ReadFile(data.UserFile)
+	datas, err := os.ReadFile(data.UserFile)
 	if err != nil {
 		glog.Error("Failed to read file, the error is %v", err.Error())
 		return nil, err
@@ -500,7 +499,7 @@ func WriteUsers(users []data.User) error {
 		return err
 	}
 
-	err = ioutil.WriteFile(data.UserFile, user_data, 0644)
+	err = os.WriteFile(data.UserFile, user_data, 0644)
 	if err != nil {
 		glog.Error("Failed to write file, the error is %v", err.Error())
 		return err
