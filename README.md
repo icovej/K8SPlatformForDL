@@ -14,7 +14,7 @@ Then:
 
 ```shell
 cd platform_back_end
-sudo go run main.go srcfilepath="${your original dockerfile path}" -logdir="${glog path which you want to save glog}"
+sudo go run main.go -srcfilepath="${your original dockerfile path}" -log_dir="${glog path which you want to save glog}"
 ```
 
 
