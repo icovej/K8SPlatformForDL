@@ -1,7 +1,0 @@
-Log file created at: 2023/05/14 02:27:40
-Running on machine: master
-Binary: Built with gc go1.20.2 for linux/amd64
-Previous log: <none>
-Log line format: [IWEF]mmdd hh:mm:ss.uuuuuu threadid file:line] msg
-I0514 02:27:40.904270  519636 main.go:27] Succeed to start platform
-I0514 02:27:58.121749  519636 token.go:149] eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6IkRhdmlkIiwicm9sZSI6InVzZXIiLCJwYXRoIjoiL2hvbWUvZ3B1LXNlcnZlci90bXAvdGVzdCIsImV4cCI6MTY4NDYzNjA3OH0.rVhuG7GzUQtCDNa_8yN859HcIDIK2qMb82FnLPl54JI

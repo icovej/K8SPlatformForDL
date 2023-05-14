@@ -31,6 +31,9 @@ func main() {
 	// Init Gin
 	router := gin.Default()
 
+	// set the max memory of file uploaded
+	//router.MaxMultipartMemory = 8 << 30 // 8GB
+
 	router.Use(tools.Core())
 
 	// Get API information

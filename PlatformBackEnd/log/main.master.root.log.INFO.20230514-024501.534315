@@ -1,7 +1,0 @@
-Log file created at: 2023/05/14 02:45:01
-Running on machine: master
-Binary: Built with gc go1.20.2 for linux/amd64
-Previous log: <none>
-Log line format: [IWEF]mmdd hh:mm:ss.uuuuuu threadid file:line] msg
-I0514 02:45:01.080910  534315 main.go:27] Succeed to start platform
-I0514 02:45:01.081042  534315 tool.go:366] Succeed to stat user data file /home/gpu-server/all_test/biyesheji/PlatformBackEnd/User.json

@@ -1,6 +1,0 @@
-Log file created at: 2023/05/14 02:30:59
-Running on machine: master
-Binary: Built with gc go1.20.2 for linux/amd64
-Previous log: <none>
-Log line format: [IWEF]mmdd hh:mm:ss.uuuuuu threadid file:line] msg
-E0514 02:30:59.646799  523039 uploadfile.go:29] Failed to get workpath from JWT, Please check it
