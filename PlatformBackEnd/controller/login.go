@@ -4,6 +4,7 @@ import (
 	"PlatformBackEnd/data"
 	"PlatformBackEnd/tools"
 	"fmt"
+	"net/http"
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang/glog"
@@ -13,9 +14,9 @@ func Login(c *gin.Context) {
 	var user data.User
 	err := c.ShouldBindJSON(&user)
 	if err != nil {
-		c.JSON(data.API_PARAMETER_ERROR, gin.H{
-			"code: ":    data.API_PARAMETER_ERROR,
-			"message: ": fmt.Sprintf("Invalid request payload, err is %v", err.Error()),
+		c.JSON(http.StatusBadRequest, gin.H{
+			"code":    data.OPERATION_FAILURE,
+			"message": fmt.Sprintf("Invalid request payload, err is %v", err.Error()),
 		})
 		glog.Error("Method RegisterHandler gets invalid request payload")
 		return
@@ -23,9 +24,9 @@ func Login(c *gin.Context) {
 
 	users, err := tools.LoadUsers(data.UserFile)
 	if err != nil {
-		c.JSON(data.OPERATION_FAILURE, gin.H{
-			"code: ":  data.OPERATION_FAILURE,
-			"error: ": err.Error(),
+		c.JSON(http.StatusMethodNotAllowed, gin.H{
+			"code":    data.OPERATION_FAILURE,
+			"message": err.Error(),
 		})
 		glog.Error("Failed to load saved users info")
 		return
@@ -42,8 +43,8 @@ func Login(c *gin.Context) {
 	}
 
 	if flag == 1 {
-		c.JSON(data.OPERATION_FAILURE, gin.H{
-			"code: ":  data.OPERATION_FAILURE,
+		c.JSON(http.StatusMethodNotAllowed, gin.H{
+			"code":    data.OPERATION_FAILURE,
 			"message": "Invalid credentials",
 		})
 	}

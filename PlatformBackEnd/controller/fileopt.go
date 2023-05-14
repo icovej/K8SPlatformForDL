@@ -16,10 +16,10 @@ func GetAllFiles(c *gin.Context) {
 	files, err := ioutil.ReadDir(path)
 	if err != nil {
 		c.JSON(http.StatusMethodNotAllowed, gin.H{
-			"code: ":  http.StatusMethodNotAllowed,
-			"error: ": err.Error(),
+			"code":  data.OPERATION_FAILURE,
+			"error": err.Error(),
 		})
-		glog.Error("Failed to read path, the error is %v", path, err.Error())
+		glog.Errorf("Failed to read path, the error is %v", path, err.Error())
 		return
 	}
 
@@ -37,8 +37,8 @@ func GetAllFiles(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"code:": http.StatusOK,
-		"data:": result,
+		"code": http.StatusOK,
+		"data": result,
 	})
 }
 
@@ -47,9 +47,9 @@ func DeleteFile(c *gin.Context) {
 
 	fi, err := os.Stat(path)
 	if err != nil {
-		c.JSON(data.OPERATION_FAILURE, gin.H{
-			"code: ":  data.OPERATION_FAILURE,
-			"error: ": err.Error(),
+		c.JSON(http.StatusMethodNotAllowed, gin.H{
+			"code":  data.OPERATION_FAILURE,
+			"error": err.Error(),
 		})
 		glog.Error("Failed to stat file/dir")
 		return
@@ -57,9 +57,9 @@ func DeleteFile(c *gin.Context) {
 	if fi.IsDir() {
 		err = os.RemoveAll(path)
 		if err != nil {
-			c.JSON(data.OPERATION_FAILURE, gin.H{
-				"code: ":  data.OPERATION_FAILURE,
-				"error: ": err.Error(),
+			c.JSON(http.StatusMethodNotAllowed, gin.H{
+				"code":  data.OPERATION_FAILURE,
+				"error": err.Error(),
 			})
 			glog.Error("Failed to remove dir")
 			return
@@ -67,17 +67,17 @@ func DeleteFile(c *gin.Context) {
 	} else {
 		err = os.Remove(path)
 		if err != nil {
-			c.JSON(data.OPERATION_FAILURE, gin.H{
-				"code: ":  data.OPERATION_FAILURE,
-				"error: ": err.Error(),
+			c.JSON(http.StatusMethodNotAllowed, gin.H{
+				"code":  data.OPERATION_FAILURE,
+				"error": err.Error(),
 			})
 			glog.Error("Failed to remove file")
 			return
 		}
 	}
 
-	c.JSON(data.SUCCESS, gin.H{
-		"code:":    data.SUCCESS,
-		"message:": "Succeed to delete target",
+	c.JSON(http.StatusOK, gin.H{
+		"code":    data.SUCCESS,
+		"message": "Succeed to delete target",
 	})
 }

@@ -65,7 +65,7 @@ func JWTAuth() gin.HandlerFunc {
 		tokenString := c.Request.Header.Get("token")
 		if tokenString == "" {
 			c.JSON(http.StatusBadRequest, gin.H{
-				"code":    http.StatusBadRequest,
+				"code":    data.OPERATION_FAILURE,
 				"message": "The request is nil with no token, unauthorized access",
 			})
 			glog.Error("The request is nil with no token, unauthorized access")
@@ -78,7 +78,7 @@ func JWTAuth() gin.HandlerFunc {
 		token, err := j.ParseToken(tokenString)
 		if err != nil && err == data.TokenExpired {
 			c.JSON(http.StatusForbidden, gin.H{
-				"code":    http.StatusForbidden,
+				"code":    data.OPERATION_FAILURE,
 				"message": "Token has been expired",
 			})
 			glog.Error("Token has been expired")
@@ -87,7 +87,7 @@ func JWTAuth() gin.HandlerFunc {
 		if claims, ok := token.Claims.(*data.CustomClaims); ok && token.Valid {
 			if !claims.VerifyExpiresAt(time.Now(), false) {
 				c.JSON(http.StatusForbidden, gin.H{
-					"code":    http.StatusForbidden,
+					"code":    data.OPERATION_FAILURE,
 					"message": "Access token expired",
 				})
 				glog.Error("Access token expired")
@@ -108,12 +108,13 @@ func JWTAuth() gin.HandlerFunc {
 			c.Set("claims", claims)
 		} else {
 			c.JSON(http.StatusForbidden, gin.H{
-				"code":    http.StatusForbidden,
+				"code":    data.OPERATION_FAILURE,
 				"message": fmt.Sprintf("Failed to parse claims, the error is %v", err.Error()),
 			})
-			glog.Error("Failed to parse claims, the error is %v", err.Error())
+			glog.Errorf("Failed to parse claims, the error is %v", err.Error())
 			return
 		}
+
 		c.Next()
 	}
 }
@@ -136,23 +137,30 @@ func GenerateToken(c *gin.Context, user data.User) {
 	fmt.Println(136)
 	if err != nil {
 		c.JSON(http.StatusMethodNotAllowed, gin.H{
-			"code:":     http.StatusMethodNotAllowed,
-			"message: ": err.Error(),
+			"code":    data.OPERATION_FAILURE,
+			"message": err.Error(),
 		})
 		glog.Error("Failed to create token, the error is %v", err.Error())
 		return
 	}
 
-	glog.Info(token)
-	fmt.Println(147)
-	data := data.LoginResult{
+	token_data := data.LoginResult{
 		User:  user,
 		Token: token,
 	}
+
+	cookie := &http.Cookie{
+		Name:     "token",
+		Value:    user.Path,
+		Expires:  time.Now().Add(24 * time.Hour),
+		HttpOnly: true,
+	}
+	http.SetCookie(c.Writer, cookie)
+
 	c.JSON(http.StatusOK, gin.H{
-		"code":    http.StatusOK,
+		"code":    data.SUCCESS,
 		"message": "Succeed to login",
-		"data":    data,
+		"data":    token_data,
 	})
 }
 
@@ -160,7 +168,7 @@ func GetDataByTime(c *gin.Context) {
 	claims := c.MustGet("claims").(*data.CustomClaims)
 	if claims != nil {
 		c.JSON(http.StatusOK, gin.H{
-			"code":    http.StatusOK,
+			"code":    data.SUCCESS,
 			"message": "Token works",
 			"data":    claims,
 		})

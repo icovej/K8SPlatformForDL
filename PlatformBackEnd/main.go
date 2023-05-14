@@ -24,11 +24,13 @@ func main() {
 	fmt.Println(*port)
 
 	defer glog.Flush()
+	glog.Info("Succeed to start platform")
 
 	_ = tools.CreateFile(data.UserFile)
 
 	// Init Gin
 	router := gin.Default()
+
 	router.Use(tools.Core())
 
 	// Get API information
@@ -62,5 +64,10 @@ func main() {
 	// Get container data
 	router.POST("/ws", controller.GetContainerData)
 
+	// Load file
+	router.GET("/upload", controller.UploadFile)
+
 	router.Run(*port)
+	// 192.168.10.11
+	// router.Run("192.168.10.11:8080")
 }

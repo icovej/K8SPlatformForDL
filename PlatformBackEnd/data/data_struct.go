@@ -11,7 +11,7 @@ import (
 
 const (
 	// user data file
-	UserFile = "/etc/User.json"
+	UserFile = "User.json"
 
 	// the metric of nvidia/com
 	// the value is set by Kubernetes

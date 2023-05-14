@@ -7,6 +7,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io"
+	"net/http"
 	"os"
 	"strings"
 
@@ -41,7 +42,7 @@ func (r *Reader) Next() (*util.Event, error) {
 
 	crc := binary.LittleEndian.Uint32(header[8:12])
 	if !tools.VerifyChecksum(header[0:8], crc) {
-		glog.Error("Failed to check the crc of event file, the error is %v", data.ErrInvalidChecksum.Error())
+		glog.Errorf("Failed to check the crc of event file, the error is %v", data.ErrInvalidChecksum.Error())
 		return nil, errors.Wrap(data.ErrInvalidChecksum, "length")
 	}
 
@@ -63,7 +64,7 @@ func (r *Reader) Next() (*util.Event, error) {
 	footer := payload[length:]
 	crc = binary.LittleEndian.Uint32(footer)
 	if !tools.VerifyChecksum(payload[:length], crc) {
-		glog.Error("Failed to check the crc of event file, the error is %v", data.ErrInvalidChecksum.Error())
+		glog.Errorf("Failed to check the crc of event file, the error is %v", data.ErrInvalidChecksum.Error())
 		return nil, errors.Wrap(data.ErrInvalidChecksum, "payload")
 	}
 
@@ -76,9 +77,9 @@ func GetData(c *gin.Context) {
 	var evdata data.EVData
 	err := c.ShouldBindJSON(&evdata)
 	if err != nil {
-		c.JSON(data.API_PARAMETER_ERROR, gin.H{
-			"code: ":    data.API_PARAMETER_ERROR,
-			"message: ": fmt.Sprintf("Invalid request payload, err is %v", err.Error()),
+		c.JSON(http.StatusBadRequest, gin.H{
+			"code":    data.API_PARAMETER_ERROR,
+			"message": fmt.Sprintf("Invalid request payload, err is %v", err.Error()),
 		})
 		glog.Error("Method GetData gets invalid request payload")
 		return
@@ -87,11 +88,11 @@ func GetData(c *gin.Context) {
 	testfile := evdata.Logdir
 	f, err := os.Open(testfile)
 	if err != nil {
-		c.JSON(data.OPERATION_FAILURE, gin.H{
-			"code:":   data.OPERATION_FAILURE,
+		c.JSON(http.StatusMethodNotAllowed, gin.H{
+			"code":    data.OPERATION_FAILURE,
 			"message": err.Error(),
 		})
-		glog.Error("Failed to open log dir, the error is %v", err.Error())
+		glog.Errorf("Failed to open log dir, the error is %v", err.Error())
 		return
 	}
 	defer f.Close()
@@ -105,7 +106,7 @@ func GetData(c *gin.Context) {
 			if err == io.EOF {
 				break
 			} else if err != nil {
-				glog.Error("Failed to read event file, the error is %v", err.Error())
+				glog.Errorf("Failed to read event file, the error is %v", err.Error())
 			}
 		}
 		events = append(events, ev)
@@ -128,17 +129,17 @@ func GetData(c *gin.Context) {
 				if strings.HasPrefix(tag, data.TestPrefix) {
 					_, err := test_loss.WriteString(tag + " " + tools.FloatToString(s.Value[j].GetSimpleValue()) + "\n")
 					if err != nil {
-						glog.Error("Failed to get test loss value from event, the error is %v", err.Error())
+						glog.Errorf("Failed to get test loss value from event, the error is %v", err.Error())
 					}
 				} else if strings.HasPrefix(tag, data.TrainPrefix) {
 					_, err := train_loss.WriteString(tag + " " + tools.FloatToString(s.Value[j].GetSimpleValue()) + "\n")
 					if err != nil {
-						glog.Error("Failed to get train loss value from event, the error is %v", err.Error())
+						glog.Errorf("Failed to get train loss value from event, the error is %v", err.Error())
 					}
 				} else if strings.HasPrefix(tag, data.Accuracy) {
 					_, err := acc.WriteString(tag + " " + tools.FloatToString(s.Value[j].GetSimpleValue()) + "\n")
 					if err != nil {
-						glog.Error("Failed to get acc value from event, the error is %v", err.Error())
+						glog.Errorf("Failed to get acc value from event, the error is %v", err.Error())
 					}
 				}
 			}
@@ -147,20 +148,20 @@ func GetData(c *gin.Context) {
 
 	err = tools.CalculateAvg(data.TestLossFile)
 	if err != nil {
-		c.JSON(data.OPERATION_FAILURE, gin.H{
-			"code: ":   data.OPERATION_FAILURE,
-			"message:": err.Error(),
+		c.JSON(http.StatusMethodNotAllowed, gin.H{
+			"code":    data.OPERATION_FAILURE,
+			"message": err.Error(),
 		})
-		glog.Error("Failed to calculate test loss avg, the err is %v", err.Error())
+		glog.Errorf("Failed to calculate test loss avg, the err is %v", err.Error())
 		return
 	}
 	err = tools.CalculateAvg(data.TrainLossFile)
 	if err != nil {
-		c.JSON(data.OPERATION_FAILURE, gin.H{
-			"code: ":   data.OPERATION_FAILURE,
-			"message:": err.Error(),
+		c.JSON(http.StatusMethodNotAllowed, gin.H{
+			"code":    data.OPERATION_FAILURE,
+			"message": err.Error(),
 		})
-		glog.Error("Failed to calculate train loss avg, the err is %v", err.Error())
+		glog.Errorf("Failed to calculate train loss avg, the err is %v", err.Error())
 		return
 	}
 

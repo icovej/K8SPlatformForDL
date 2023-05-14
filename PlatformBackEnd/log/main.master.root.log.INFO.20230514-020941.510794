@@ -1,0 +1,14 @@
+Log file created at: 2023/05/14 02:09:41
+Running on machine: master
+Binary: Built with gc go1.20.2 for linux/amd64
+Previous log: <none>
+Log line format: [IWEF]mmdd hh:mm:ss.uuuuuu threadid file:line] msg
+I0514 02:09:41.573329  510794 main.go:27] Succeed to start platform
+E0514 02:09:49.747055  510794 register.go:22] Method RegisterHandler gets invalid request payload
+E0514 02:10:54.174959  510794 register.go:22] Method RegisterHandler gets invalid request payload
+E0514 02:11:08.939114  510794 register.go:22] Method RegisterHandler gets invalid request payload
+E0514 02:11:49.013875  510794 register.go:22] Method RegisterHandler gets invalid request payload
+E0514 02:12:22.806979  510794 register.go:22] Method RegisterHandler gets invalid request payload
+E0514 02:14:54.929059  510794 register.go:22] Method RegisterHandler gets invalid request payload
+E0514 02:15:09.503412  510794 register.go:22] Method RegisterHandler gets invalid request payload
+I0514 02:18:08.483088  510794 token.go:148] eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6IkRhdmlkIiwicm9sZSI6InVzZXIiLCJwYXRoIjoiL2hvbWUvZ3B1LXNlcnZlci90bXAvdGVzdCIsImV4cCI6MTY4NDYzNTQ4OH0.QYcM-L3VILmUaQ74mfsBE_F-LgD6Ykla_DN0URmjOxc

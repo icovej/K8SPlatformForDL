@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"hash/crc32"
 	"io"
-	"log"
 	"math"
 	"net/http"
 	"os"
@@ -43,13 +42,13 @@ import (
 func initDocker() (*client.Client, error) {
 	dockerClient, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 	if err != nil {
-		glog.Error("Failed to init docker client, the error is %v", err)
+		glog.Errorf("Failed to init docker client, the error is %v", err)
 		return nil, err
 	}
 
 	_, err = dockerClient.Ping(context.Background())
 	if err != nil {
-		glog.Error("Failed to connect to docker client, the error is %v", err)
+		glog.Errorf("Failed to connect to docker client, the error is %v", err)
 		return nil, err
 	}
 
@@ -71,7 +70,7 @@ func getConfig() (*rest.Config, error) {
 	// Use kubeconfig context to load config file
 	config, err_config := clientcmd.BuildConfigFromFlags("", *kubeconfig)
 	if err_config != nil {
-		glog.Error("Failed to use load kubeconfig, the error is %v", err_config)
+		glog.Errorf("Failed to use load kubeconfig, the error is %v", err_config)
 		return nil, err_config
 	}
 
@@ -82,14 +81,14 @@ func getConfig() (*rest.Config, error) {
 func initK8S() (*kubernetes.Clientset, error) {
 	config, err := getConfig()
 	if err != nil {
-		glog.Error("Failed to get config, the error is %v", err.Error())
+		glog.Errorf("Failed to get config, the error is %v", err.Error())
 		return nil, err
 	}
 
 	// build clientset
 	clientset, err_client := kubernetes.NewForConfig(config)
 	if err_client != nil {
-		glog.Error("Failed to create clientset, the error is %v", err_client)
+		glog.Errorf("Failed to create clientset, the error is %v", err_client)
 		return nil, err_client
 	}
 
@@ -99,13 +98,13 @@ func initK8S() (*kubernetes.Clientset, error) {
 func initMetricClient() (*versioned.Clientset, error) {
 	config, err := getConfig()
 	if err != nil {
-		glog.Error("Failed to get config, the error is %v", err.Error())
+		glog.Errorf("Failed to get config, the error is %v", err.Error())
 		return nil, err
 	}
 
 	metricsClient, err := versioned.NewForConfig(config)
 	if err != nil {
-		log.Fatalf("Error creating Metrics client: %v", err)
+		glog.Errorf("Failed to create Metrics client: %v", err)
 		return nil, err
 	}
 
@@ -115,12 +114,12 @@ func initMetricClient() (*versioned.Clientset, error) {
 func CreatePod(poddata data.PodData, pod *v1.Pod) (*v1.Pod, error) {
 	clientset, err := initK8S()
 	if err != nil {
-		glog.Error("Failed to start k8s, the error is %v", err.Error())
+		glog.Errorf("Failed to start k8s, the error is %v", err.Error())
 		return nil, err
 	}
 	pod_container, err := clientset.CoreV1().Pods(poddata.Namespace).Create(context.Background(), pod, metav1.CreateOptions{})
 	if err != nil {
-		glog.Error("Failed to create pod, the error is %v", err.Error())
+		glog.Errorf("Failed to create pod, the error is %v", err.Error())
 		return nil, err
 	}
 	return pod_container, nil
@@ -129,14 +128,14 @@ func CreatePod(poddata data.PodData, pod *v1.Pod) (*v1.Pod, error) {
 func GetAllNamespace() ([]string, error) {
 	clientset, err := initK8S()
 	if err != nil {
-		glog.Error("Failed to start k8s, the error is %v", err.Error())
+		glog.Errorf("Failed to start k8s, the error is %v", err.Error())
 		return nil, err
 	}
 
 	var nameSpaces []string
 	namespace, err := clientset.CoreV1().Namespaces().List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
-		glog.Error("Failed to list ns, the error is %v", err.Error())
+		glog.Errorf("Failed to list ns, the error is %v", err.Error())
 		return nil, err
 	}
 	for _, ns := range namespace.Items {
@@ -148,13 +147,13 @@ func GetAllNamespace() ([]string, error) {
 func GetAllPod(namespace string) ([]map[string]interface{}, error) {
 	clientset, err := initK8S()
 	if err != nil {
-		glog.Error("Failed to start k8s, the error is %v", err.Error())
+		glog.Errorf("Failed to start k8s, the error is %v", err.Error())
 		return nil, err
 	}
 
 	pods, err := clientset.CoreV1().Pods(namespace).List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
-		glog.Error("Failed to list ns, the error is %v", err.Error())
+		glog.Errorf("Failed to list ns, the error is %v", err.Error())
 	}
 
 	podList := make([]map[string]interface{}, 0, len(pods.Items))
@@ -173,7 +172,7 @@ func GetAllPod(namespace string) ([]map[string]interface{}, error) {
 func ClearExpiredPod(namespace string) error {
 	clientset, err := initK8S()
 	if err != nil {
-		glog.Error("Failed to start k8s, the error is %v", err.Error())
+		glog.Errorf("Failed to start k8s, the error is %v", err.Error())
 		return err
 	}
 
@@ -224,7 +223,7 @@ func GetAvailableMemoryAndGPU() (uint64, int, map[int]uint64, error) {
 	// Get GPU data
 	err_init := nvml.Init()
 	if err_init != nil {
-		glog.Error("Failed to init nvml to get futher info, the error is %v", err_init)
+		glog.Errorf("Failed to init nvml to get futher info, the error is %v", err_init)
 		return 0, 0, nil, err_init
 	}
 	defer nvml.Shutdown()
@@ -233,13 +232,13 @@ func GetAvailableMemoryAndGPU() (uint64, int, map[int]uint64, error) {
 	// Get the number of graphics card and their data
 	deviceCount, err_gpu := nvml.GetDeviceCount()
 	if err_gpu != nil {
-		glog.Error("Failed to get all GPU num, the error is %v", err_gpu)
+		glog.Errorf("Failed to get all GPU num, the error is %v", err_gpu)
 		return 0, 0, nil, err_gpu
 	}
 	for i := uint(0); i < deviceCount; i++ {
 		device, err_device := nvml.NewDeviceLite(uint(i))
 		if err_device != nil {
-			glog.Error("Failed to get GPU device, the error is %v", err_device)
+			glog.Errorf("Failed to get GPU device, the error is %v", err_device)
 			return 0, 0, nil, err_device
 		}
 
@@ -258,21 +257,21 @@ func GetAvailableMemoryAndGPU() (uint64, int, map[int]uint64, error) {
 func CopyFile(filepath string, newFilepath string) error {
 	src, err_src := os.Open(filepath)
 	if err_src != nil {
-		glog.Error("Failed to open original dockerfile, the error is %v", err_src)
+		glog.Errorf("Failed to open original dockerfile, the error is %v", err_src)
 		return err_src
 	}
 	defer src.Close()
 
 	dst, err_dst := os.Create(newFilepath)
 	if err_dst != nil {
-		glog.Error("Failed to create target dockerfile, the error is %v", err_dst)
+		glog.Errorf("Failed to create target dockerfile, the error is %v", err_dst)
 		return err_dst
 	}
 	defer dst.Close()
 
 	_, err_copy := io.Copy(dst, src)
 	if err_copy != nil {
-		glog.Error("Failed to copy file from src to target, the error is %v", err_copy)
+		glog.Errorf("Failed to copy file from src to target, the error is %v", err_copy)
 		return err_copy
 	}
 
@@ -283,21 +282,21 @@ func CopyFile(filepath string, newFilepath string) error {
 func WriteAtBeginning(filename string, data []byte) error {
 	file, err := os.OpenFile(filename, os.O_RDWR, 0644)
 	if err != nil {
-		glog.Error("Failed to open file, the error is %v", err)
+		glog.Errorf("Failed to open file, the error is %v", err)
 		return err
 	}
 	defer file.Close()
 
 	oldData, err := io.ReadAll(file)
 	if err != nil {
-		glog.Error("Failed to read file, the error is %v", err)
+		glog.Errorf("Failed to read file, the error is %v", err)
 		return err
 	}
 
 	newData := append(data, oldData...)
 	err = os.WriteFile(filename, newData, 0644)
 	if err != nil {
-		glog.Error("Failed to open write file, the error is %v", err)
+		glog.Errorf("Failed to open write file, the error is %v", err)
 		return err
 	}
 
@@ -308,7 +307,7 @@ func WriteAtBeginning(filename string, data []byte) error {
 func WriteAtTail(filepath string, image string) error {
 	file, err := os.OpenFile(filepath, os.O_WRONLY|os.O_APPEND, 0666)
 	if err != nil {
-		glog.Error("Failed to open original dockerfile, the error is %v", err)
+		glog.Errorf("Failed to open original dockerfile, the error is %v", err)
 		return err
 	}
 	defer file.Close()
@@ -317,7 +316,7 @@ func WriteAtTail(filepath string, image string) error {
 	s := "RUN pip install " + image + "\n"
 	_, err = writer.WriteString(s)
 	if err != nil {
-		glog.Error("Failed to open write file, the error is %v", err)
+		glog.Errorf("Failed to open write file, the error is %v", err)
 		return err
 	}
 
@@ -329,7 +328,7 @@ func ExecCommand(command string, args ...string) ([]byte, error) {
 
 	output, err := cmd.Output()
 	if err != nil {
-		glog.Error("Failed to exec, the error is ", err.Error())
+		glog.Errorf("Failed to exec, the error is %v", err.Error())
 		return nil, err
 	}
 	return output, nil
@@ -345,20 +344,27 @@ func CreatePath(dirpath string, perm os.FileMode) error {
 
 	err_mk := os.MkdirAll(dirpath, perm)
 	if err_mk != nil {
-		glog.Error("Failed to create user path %v, the error is %v", dirpath, err_mk)
+		glog.Errorf("Failed to create user path %v, the error is %v", dirpath, err_mk)
 		return err_mk
 	}
 	return nil
 }
 
 // Create File
-func CreateFile(path string) error {
-	_, err := os.Create(path)
-	if err == nil {
-		glog.Error("Failed to create user data file")
-		return err
+func CreateFile(file string) error {
+	path, _ := os.Getwd()
+	path = path + "/" + file
+	_, err := os.Stat(path)
+	if err != nil {
+		_, err = os.Create(path)
+		if err != nil {
+			glog.Errorf("Failed to create user data file %v", path)
+			return err
+		}
+		return nil
 	}
-	return nil
+	glog.Infof("Succeed to stat user data file %v", path)
+	return err
 }
 
 // float32 to string
@@ -372,7 +378,7 @@ func extractNumber(s string) int {
 	parts := strings.Split(s, "_")
 	n, err := strconv.Atoi(parts[len(parts)-1])
 	if err != nil {
-		glog.Error("Failed to extract number, the error is %v", err.Error())
+		glog.Errorf("Failed to extract number, the error is %v", err.Error())
 		return 0
 	}
 	return n
@@ -382,7 +388,7 @@ func extractNumber(s string) int {
 func CalculateAvg(filepath string) error {
 	f, err := os.Open(filepath)
 	if err != nil {
-		glog.Error("Failed to open file, the error is %v", err.Error())
+		glog.Errorf("Failed to open file, the error is %v", err.Error())
 		return err
 	}
 	defer f.Close()
@@ -421,7 +427,7 @@ func CalculateAvg(filepath string) error {
 
 	outputFile, err := os.Create(filepath)
 	if err != nil {
-		glog.Error("Failed to open output file, the error is %v", err.Error())
+		glog.Errorf("Failed to open output file, the error is %v", err.Error())
 		return err
 	}
 	defer outputFile.Close()
@@ -438,7 +444,7 @@ func Core() gin.HandlerFunc {
 		method := c.Request.Method
 		c.Header("Access-Control-Allow-Origin", "*")
 		c.Header("Access-Control-Allow-Headers", "Content-Type,AccessToken,X-CSRF-Token,Authorization,Token")
-		c.Header("Access-Control-Allow-Methods", "POST,GET,OPTIONS")
+		c.Header("Access-Control-Allow-Methods", "POST, GET, OPTIONS, DELETE, PATCH, PUT")
 		c.Header("Access-Control-Expose-Headers", "Content-Length,Access-Control-Allow-Origin,Access-Control-Allow-Headers,Content-Type")
 		c.Header("Access-Control-Allow-Credentials", "True")
 
@@ -475,7 +481,7 @@ func VerifyChecksum(d []byte, crcMasked uint32) bool {
 func CheckUsers() ([]data.User, error) {
 	datas, err := os.ReadFile(data.UserFile)
 	if err != nil {
-		glog.Error("Failed to read file, the error is %v", err.Error())
+		glog.Errorf("Failed to read file, the error is %v", err.Error())
 		return nil, err
 	}
 
@@ -485,7 +491,7 @@ func CheckUsers() ([]data.User, error) {
 	}
 	err = json.Unmarshal(datas, &users)
 	if err != nil {
-		glog.Error("Failed to unmarshal user data, the error is %v", err.Error())
+		glog.Errorf("Failed to unmarshal user data, the error is %v", err.Error())
 		return nil, err
 	}
 
@@ -495,13 +501,13 @@ func CheckUsers() ([]data.User, error) {
 func WriteUsers(users []data.User) error {
 	user_data, err := json.Marshal(users)
 	if err != nil {
-		glog.Error("Failed to marshal user data, the error is %v", err.Error())
+		glog.Errorf("Failed to marshal user data, the error is %v", err.Error())
 		return err
 	}
 
 	err = os.WriteFile(data.UserFile, user_data, 0644)
 	if err != nil {
-		glog.Error("Failed to write file, the error is %v", err.Error())
+		glog.Errorf("Failed to write file, the error is %v", err.Error())
 		return err
 	}
 
@@ -529,18 +535,18 @@ func MiBToBytes(mib float64) int64 {
 func GetContainerData(conn *websocket.Conn) {
 	clientset, err := initK8S()
 	if err != nil {
-		glog.Error("Failed to start k8s, the error is %v", err.Error())
+		glog.Errorf("Failed to start k8s, the error is %v", err.Error())
 		return
 	}
 	pods, err := clientset.CoreV1().Pods("").List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
-		glog.Error("Error getting pod list: %v", err)
+		glog.Errorf("Error getting pod list: %v", err)
 		return
 	}
 
 	metricsClient, err := initMetricClient()
 	if err != nil {
-		glog.Error("Failed to start metricsClient, the error is %v", err.Error())
+		glog.Errorf("Failed to start metricsClient, the error is %v", err.Error())
 		return
 	}
 
@@ -549,7 +555,7 @@ func GetContainerData(conn *websocket.Conn) {
 			// Get CPU、GPU、Mem Info
 			metrics, err := metricsClient.MetricsV1beta1().PodMetricses(pod.Namespace).Get(context.Background(), pod.Name, metav1.GetOptions{})
 			if err != nil {
-				glog.Error("Failed to get pod metrics: %v", err.Error())
+				glog.Errorf("Failed to get pod metrics: %v", err.Error())
 				continue
 			}
 
@@ -561,7 +567,7 @@ func GetContainerData(conn *websocket.Conn) {
 					// GPU usage
 					gpu, err := getGPUMetrics(container.Name)
 					if err != nil {
-						glog.Error("Failed to get GPU metrics: %v", err.Error())
+						glog.Errorf("Failed to get GPU metrics: %v", err.Error())
 						continue
 					}
 					// Mem usage
@@ -577,13 +583,13 @@ func GetContainerData(conn *websocket.Conn) {
 
 					jsonData, err := json.Marshal(data)
 					if err != nil {
-						glog.Error("Failed to encode JSON: %v", err.Error())
+						glog.Errorf("Failed to encode JSON: %v", err.Error())
 						continue
 					}
 
 					err = conn.WriteMessage(websocket.TextMessage, jsonData)
 					if err != nil {
-						glog.Error("Failed to write WebSocket message: %v", err.Error())
+						glog.Errorf("Failed to write WebSocket message: %v", err.Error())
 						break
 					}
 				}
@@ -598,12 +604,12 @@ func getGPUMetrics(containerName string) (int64, error) {
 	// output, err := cmd.Output()
 	output, err := ExecCommand("nvidia-smi", "--query-gpu=memory.used", "--format=csv,noheader,nounits")
 	if err != nil {
-		glog.Error("Failed to run gpu cmd, the error is %v", err.Error())
+		glog.Errorf("Failed to run gpu cmd, the error is %v", err.Error())
 		return 0, err
 	}
 	gpuUsage, err := strconv.ParseInt(strings.TrimSpace(string(output)), 10, 64)
 	if err != nil {
-		glog.Error("Failed to get gpu data, the error is %v", err.Error())
+		glog.Errorf("Failed to get gpu data, the error is %v", err.Error())
 	}
 	return gpuUsage, nil
 }

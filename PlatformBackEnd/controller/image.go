@@ -4,6 +4,7 @@ import (
 	"PlatformBackEnd/data"
 	"PlatformBackEnd/tools"
 	"fmt"
+	"net/http"
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang/glog"
@@ -15,11 +16,11 @@ func CreateImage(c *gin.Context) {
 	// Parse data that from front-end
 	err := c.ShouldBindJSON(&image_data)
 	if err != nil {
-		c.JSON(data.API_PARAMETER_ERROR, gin.H{
-			"code: ":    data.API_PARAMETER_ERROR,
-			"message: ": fmt.Sprintf("Invalid request payload, err is %v", err.Error()),
+		c.JSON(http.StatusBadRequest, gin.H{
+			"code":    data.API_PARAMETER_ERROR,
+			"message": fmt.Sprintf("Invalid request payload, err is %v", err.Error()),
 		})
-		glog.Error("Method CreateImage gets invalid request payload")
+		glog.Errorf("Method CreateImage gets invalid request payload")
 		return
 	}
 
@@ -28,11 +29,11 @@ func CreateImage(c *gin.Context) {
 
 	err = tools.CopyFile(data.Srcfilepath, dstFilepath)
 	if err != nil {
-		c.JSON(data.OPERATION_FAILURE, gin.H{
-			"code: ":    data.OPERATION_FAILURE,
-			"message: ": err.Error(),
+		c.JSON(http.StatusMethodNotAllowed, gin.H{
+			"code":    data.OPERATION_FAILURE,
+			"message": err.Error(),
 		})
-		glog.Error("Failed to create dockerfile, the error is %v", err)
+		glog.Errorf("Failed to create dockerfile, the error is %v", err)
 		return
 	}
 
@@ -41,11 +42,11 @@ func CreateImage(c *gin.Context) {
 	statement := "FROM " + osVersion + "\n"
 	err = tools.WriteAtBeginning(dstFilepath, []byte(statement))
 	if err != nil {
-		c.JSON(data.API_PARAMETER_ERROR, gin.H{
-			"code: ":    data.API_PARAMETER_ERROR,
-			"message: ": err.Error(),
+		c.JSON(http.StatusMethodNotAllowed, gin.H{
+			"code":    data.API_PARAMETER_ERROR,
+			"message": err.Error(),
 		})
-		glog.Error("Failed to write osVersion to dockerfile, the error is %v", err)
+		glog.Errorf("Failed to write osVersion to dockerfile, the error is %v", err)
 		return
 	}
 
@@ -53,11 +54,11 @@ func CreateImage(c *gin.Context) {
 	pyVersion := image_data.Pythonversion
 	err = tools.WriteAtTail(dstFilepath, pyVersion)
 	if err != nil {
-		c.JSON(data.API_PARAMETER_ERROR, gin.H{
-			"code: ":    data.API_PARAMETER_ERROR,
-			"message: ": err.Error(),
+		c.JSON(http.StatusMethodNotAllowed, gin.H{
+			"code":    data.API_PARAMETER_ERROR,
+			"message": err.Error(),
 		})
-		glog.Error("Failed to write PyVersion to dockerfile, the error is %v", err)
+		glog.Errorf("Failed to write PyVersion to dockerfile, the error is %v", err)
 		return
 	}
 
@@ -67,11 +68,11 @@ func CreateImage(c *gin.Context) {
 	for i := range imageArray {
 		err = tools.WriteAtTail(dstFilepath, imageArray[i])
 		if err != nil {
-			c.JSON(data.API_PARAMETER_ERROR, gin.H{
-				"code: ":    data.API_PARAMETER_ERROR,
-				"message: ": err.Error(),
+			c.JSON(http.StatusMethodNotAllowed, gin.H{
+				"code":    data.API_PARAMETER_ERROR,
+				"message": err.Error(),
 			})
-			glog.Error("Failed to write image to dockerfile, the error is %v", err)
+			glog.Errorf("Failed to write image to dockerfile, the error is %v", err)
 			return
 		}
 	}
@@ -81,15 +82,15 @@ func CreateImage(c *gin.Context) {
 	cmd := "docker"
 	_, err = tools.ExecCommand(cmd, "build", "-t", imageName, "-f", dstFilepath, ".")
 	if err != nil {
-		c.JSON(data.API_PARAMETER_ERROR, gin.H{
+		c.JSON(http.StatusMethodNotAllowed, gin.H{
 			"code: ":    data.API_PARAMETER_ERROR,
 			"message: ": err.Error(),
 		})
-		glog.Error("Failed to exec docker build, the error is %v", err)
+		glog.Errorf("Failed to exec docker build, the error is %v", err)
 		return
 	}
 
-	c.JSON(data.SUCCESS, gin.H{
+	c.JSON(http.StatusOK, gin.H{
 		"code: ":    data.SUCCESS,
 		"message: ": fmt.Sprintf("Succeed to build image: %v", imageName),
 	})

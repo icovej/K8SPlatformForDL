@@ -1,0 +1,8 @@
+Log file created at: 2023/05/14 02:23:25
+Running on machine: master
+Binary: Built with gc go1.20.2 for linux/amd64
+Previous log: <none>
+Log line format: [IWEF]mmdd hh:mm:ss.uuuuuu threadid file:line] msg
+E0514 02:23:25.413093  517788 login.go:31] Failed to load saved users info
+E0514 02:24:02.260246  517788 login.go:31] Failed to load saved users info
+E0514 02:24:35.366858  517788 uploadfile.go:19] Method UploadFile gets invalid request payload

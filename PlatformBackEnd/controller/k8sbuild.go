@@ -19,10 +19,10 @@ func K8SBuild(c *gin.Context) {
 	_, err := tools.ExecCommand("../shell/k8s/install_k8s.sh", cmdArgs...)
 	if err != nil {
 		c.JSON(http.StatusMethodNotAllowed, gin.H{
-			"code: ":  http.StatusMethodNotAllowed,
-			"error: ": err.Error(),
+			"code":    data.OPERATION_FAILURE,
+			"message": err.Error(),
 		})
-		glog.Error("Command execution failed:", err)
+		glog.Errorf("Command execution failed: %v", err)
 		return
 	}
 }
