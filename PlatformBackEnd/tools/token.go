@@ -134,7 +134,6 @@ func GenerateToken(c *gin.Context, user data.User) {
 	}
 
 	token, err := j.CreateToken(claims)
-	fmt.Println(136)
 	if err != nil {
 		c.JSON(http.StatusMethodNotAllowed, gin.H{
 			"code":    data.OPERATION_FAILURE,
@@ -173,4 +172,28 @@ func GetDataByTime(c *gin.Context) {
 			"data":    claims,
 		})
 	}
+}
+
+func (j *JWT) Parse_Token(tokenString string) (*data.CustomClaims, error) {
+	token, err := jwt.ParseWithClaims(tokenString, &data.CustomClaims{}, func(token *jwt.Token) (interface{}, error) {
+		return j.SigningKey, nil
+	})
+	if err != nil {
+		if ve, ok := err.(*jwt.ValidationError); ok {
+			if ve.Errors&jwt.ValidationErrorMalformed != 0 {
+				return nil, data.TokenMalformed
+			} else if ve.Errors&jwt.ValidationErrorExpired != 0 {
+				// Token is expired
+				return nil, data.TokenExpired
+			} else if ve.Errors&jwt.ValidationErrorNotValidYet != 0 {
+				return nil, data.TokenNotValidYet
+			} else {
+				return nil, data.TokenInvalid
+			}
+		}
+	}
+	if claims, ok := token.Claims.(*data.CustomClaims); ok && token.Valid {
+		return claims, nil
+	}
+	return nil, data.TokenInvalid
 }

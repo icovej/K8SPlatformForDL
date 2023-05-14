@@ -14,7 +14,7 @@ func MonitorPod(c *gin.Context) {
 	var mpod data.Monitor
 	err := c.ShouldBindJSON(&mpod)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
+		c.JSON(http.StatusOK, gin.H{
 			"code":    data.API_PARAMETER_ERROR,
 			"message": fmt.Sprintf("Invalid request payload, err is %v", err.Error()),
 		})
@@ -24,7 +24,7 @@ func MonitorPod(c *gin.Context) {
 
 	podList, err := tools.GetAllPod(mpod.Namespace)
 	if err != nil {
-		c.JSON(http.StatusMethodNotAllowed, gin.H{
+		c.JSON(http.StatusOK, gin.H{
 			"code":    data.API_PARAMETER_ERROR,
 			"message": err.Error(),
 		})
@@ -34,7 +34,7 @@ func MonitorPod(c *gin.Context) {
 
 	nsList, err := tools.GetAllNamespace()
 	if err != nil {
-		c.JSON(http.StatusMethodNotAllowed, gin.H{
+		c.JSON(http.StatusOK, gin.H{
 			"code":    data.API_PARAMETER_ERROR,
 			"message": err.Error(),
 		})

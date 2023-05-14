@@ -45,7 +45,7 @@ var (
 	TokenNotValidYet error  = errors.New("Token not active yet")
 	TokenMalformed   error  = errors.New("That's not even a token")
 	TokenInvalid     error  = errors.New("Couldn't handle this token:")
-	SignKey          string = "newkey"
+	SignKey          string = "newtoken"
 
 	// when the crc of the heand or tail of event file is invalid, the return
 	ErrInvalidChecksum = errors.New("invalid crc")
@@ -65,7 +65,7 @@ type Operation struct {
 //
 // Dstpath: the path to save dockerfile of user
 // Osversion: for example, ubuntu:20.04
-// Pythonversion: for example, python:3.8-slim-buster
+// Pythonversion: for example, python3.8-slim-buster
 // Imagearray: user can select them at the front-end
 // Imagename: the image name of which is built from user by using the dockerfile
 type ImageData struct {
@@ -177,4 +177,10 @@ type Monitor struct {
 type NodeIP struct {
 	Master string   `json:"MasterIP"`
 	Node   []string `json:"nodeip"`
+}
+
+type MyJSON struct {
+	JSON1 interface{} `json:"json1"`
+	JSON2 interface{} `json:"json2"`
+	JSON3 interface{} `json:"json3"`
 }

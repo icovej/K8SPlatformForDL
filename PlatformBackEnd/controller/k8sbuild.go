@@ -18,7 +18,7 @@ func K8SBuild(c *gin.Context) {
 	cmdArgs := []string{"-master", master_ip, "-nodes", nodeIPsStr}
 	_, err := tools.ExecCommand("../shell/k8s/install_k8s.sh", cmdArgs...)
 	if err != nil {
-		c.JSON(http.StatusMethodNotAllowed, gin.H{
+		c.JSON(http.StatusOK, gin.H{
 			"code":    data.OPERATION_FAILURE,
 			"message": err.Error(),
 		})

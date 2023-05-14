@@ -15,7 +15,7 @@ func RegisterHandler(c *gin.Context) {
 	var user data.User
 	err := c.ShouldBindJSON(&user)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
+		c.JSON(http.StatusOK, gin.H{
 			"code":    data.OPERATION_FAILURE,
 			"message": fmt.Sprintf("Invalid request payload, err is %v", err.Error()),
 		})
@@ -26,7 +26,7 @@ func RegisterHandler(c *gin.Context) {
 	// Check if the account has existed
 	users, err := tools.CheckUsers()
 	if err != nil {
-		c.JSON(http.StatusForbidden, gin.H{
+		c.JSON(http.StatusOK, gin.H{
 			"code":    data.OPERATION_FAILURE,
 			"message": err.Error(),
 		})
@@ -35,15 +35,15 @@ func RegisterHandler(c *gin.Context) {
 	}
 	for _, u := range users {
 		if u.Username == user.Username {
-			c.JSON(http.StatusForbidden, gin.H{
-				"code":    http.StatusBadRequest,
+			c.JSON(http.StatusOK, gin.H{
+				"code":    data.OPERATION_FAILURE,
 				"message": "Username already exists",
 			})
 			glog.Error("Username already exists!")
 			return
 		}
 		if u.Path == user.Path {
-			c.JSON(http.StatusForbidden, gin.H{
+			c.JSON(http.StatusOK, gin.H{
 				"code":    data.OPERATION_FAILURE,
 				"message": "This path has already been used",
 			})
@@ -51,7 +51,7 @@ func RegisterHandler(c *gin.Context) {
 			return
 		}
 		if u.Role == "admin" && user.Role == "admin" {
-			c.JSON(http.StatusBadRequest, gin.H{
+			c.JSON(http.StatusOK, gin.H{
 				"code":    data.OPERATION_FAILURE,
 				"message": "One cluster can have only one admin",
 			})
@@ -62,7 +62,7 @@ func RegisterHandler(c *gin.Context) {
 
 	if user.Role != "admin" {
 		if user.Path == "" {
-			c.JSON(http.StatusBadRequest, gin.H{
+			c.JSON(http.StatusOK, gin.H{
 				"code":    data.OPERATION_FAILURE,
 				"message": "User's path is nil!",
 			})
@@ -75,7 +75,7 @@ func RegisterHandler(c *gin.Context) {
 	users = append(users, user)
 	err = tools.WriteUsers(users)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
+		c.JSON(http.StatusOK, gin.H{
 			"code":    data.OPERATION_FAILURE,
 			"message": "Failed to write users file!",
 		})
@@ -86,7 +86,7 @@ func RegisterHandler(c *gin.Context) {
 	// create user's path
 	err = os.MkdirAll(user.Path, 0777)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
+		c.JSON(http.StatusOK, gin.H{
 			"code":    data.OPERATION_FAILURE,
 			"message": "Failed to create user's path!",
 		})

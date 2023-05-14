@@ -16,7 +16,7 @@ func CreateImage(c *gin.Context) {
 	// Parse data that from front-end
 	err := c.ShouldBindJSON(&image_data)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
+		c.JSON(http.StatusOK, gin.H{
 			"code":    data.API_PARAMETER_ERROR,
 			"message": fmt.Sprintf("Invalid request payload, err is %v", err.Error()),
 		})
@@ -29,7 +29,7 @@ func CreateImage(c *gin.Context) {
 
 	err = tools.CopyFile(data.Srcfilepath, dstFilepath)
 	if err != nil {
-		c.JSON(http.StatusMethodNotAllowed, gin.H{
+		c.JSON(http.StatusOK, gin.H{
 			"code":    data.OPERATION_FAILURE,
 			"message": err.Error(),
 		})
@@ -42,7 +42,7 @@ func CreateImage(c *gin.Context) {
 	statement := "FROM " + osVersion + "\n"
 	err = tools.WriteAtBeginning(dstFilepath, []byte(statement))
 	if err != nil {
-		c.JSON(http.StatusMethodNotAllowed, gin.H{
+		c.JSON(http.StatusOK, gin.H{
 			"code":    data.API_PARAMETER_ERROR,
 			"message": err.Error(),
 		})
@@ -50,13 +50,11 @@ func CreateImage(c *gin.Context) {
 		return
 	}
 
-	glog.Info("53")
-
 	// Import python used in user's pod
 	pyVersion := image_data.Pythonversion
 	err = tools.WriteAtTail(dstFilepath, pyVersion, 0)
 	if err != nil {
-		c.JSON(http.StatusMethodNotAllowed, gin.H{
+		c.JSON(http.StatusOK, gin.H{
 			"code":    data.API_PARAMETER_ERROR,
 			"message": err.Error(),
 		})
@@ -66,11 +64,13 @@ func CreateImage(c *gin.Context) {
 
 	// Import images used in user's pod
 	// And write into dockerfile whoes path is user's working path
+	// TODO
+	// 用户直接写语句然后append
 	imageArray := image_data.Imagearray
 	for i := range imageArray {
 		err = tools.WriteAtTail(dstFilepath, imageArray[i], 1)
 		if err != nil {
-			c.JSON(http.StatusMethodNotAllowed, gin.H{
+			c.JSON(http.StatusOK, gin.H{
 				"code":    data.API_PARAMETER_ERROR,
 				"message": err.Error(),
 			})
@@ -84,7 +84,7 @@ func CreateImage(c *gin.Context) {
 	cmd := "docker"
 	_, err = tools.ExecCommand(cmd, "build", "-t", imageName, "-f", dstFilepath, ".")
 	if err != nil {
-		c.JSON(http.StatusMethodNotAllowed, gin.H{
+		c.JSON(http.StatusOK, gin.H{
 			"code: ":    data.API_PARAMETER_ERROR,
 			"message: ": err.Error(),
 		})

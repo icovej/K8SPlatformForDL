@@ -21,7 +21,7 @@ func CreatePod(c *gin.Context) {
 	var pod data.PodData
 	err := c.ShouldBindJSON(&pod)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
+		c.JSON(http.StatusOK, gin.H{
 			"code":    data.API_PARAMETER_ERROR,
 			"message": fmt.Sprintf("Invalid request payload, err is %v", err.Error()),
 		})
@@ -64,7 +64,7 @@ func CreatePod(c *gin.Context) {
 
 	if (pod_Memory > int64(avaMem)) || (pod.Cpu > ac_str) || (pod.Gpu > ag_str) {
 		err := errors.New("sources required are larger than the avaliable!")
-		c.JSON(http.StatusMethodNotAllowed, gin.H{
+		c.JSON(http.StatusOK, gin.H{
 			"code":    data.OPERATION_FAILURE,
 			"message": err.Error(),
 		})
@@ -74,7 +74,7 @@ func CreatePod(c *gin.Context) {
 
 	if (pod_Memory > pod_Lmemory) || (pod.Cpu > pod.Cpulim) || (pod.Gpu > pod.Gpulim) {
 		err := errors.New("sources required are larger than the limited!")
-		c.JSON(http.StatusMethodNotAllowed, gin.H{
+		c.JSON(http.StatusOK, gin.H{
 			"code":    data.OPERATION_FAILURE,
 			"message": err.Error(),
 		})
@@ -85,7 +85,7 @@ func CreatePod(c *gin.Context) {
 	// Parse mem、CPU and GPU to k8s mod
 	memReq, err := resource.ParseQuantity(pod.Memory)
 	if err != nil {
-		c.JSON(http.StatusMethodNotAllowed, gin.H{
+		c.JSON(http.StatusOK, gin.H{
 			"code":    data.OPERATION_FAILURE,
 			"message": err.Error(),
 		})
@@ -94,7 +94,7 @@ func CreatePod(c *gin.Context) {
 	}
 	memLim, err := resource.ParseQuantity(pod.Memlim)
 	if err != nil {
-		c.JSON(http.StatusMethodNotAllowed, gin.H{
+		c.JSON(http.StatusOK, gin.H{
 			"code":    data.OPERATION_FAILURE,
 			"message": err.Error(),
 		})
@@ -104,7 +104,7 @@ func CreatePod(c *gin.Context) {
 
 	cpuReq, err := resource.ParseQuantity(pod.Cpu)
 	if err != nil {
-		c.JSON(http.StatusMethodNotAllowed, gin.H{
+		c.JSON(http.StatusOK, gin.H{
 			"code":    data.OPERATION_FAILURE,
 			"message": err.Error(),
 		})
@@ -113,7 +113,7 @@ func CreatePod(c *gin.Context) {
 	}
 	cpuLim, err := resource.ParseQuantity(pod.Cpulim)
 	if err != nil {
-		c.JSON(http.StatusMethodNotAllowed, gin.H{
+		c.JSON(http.StatusOK, gin.H{
 			"code":    data.OPERATION_FAILURE,
 			"message": err.Error(),
 		})
@@ -123,7 +123,7 @@ func CreatePod(c *gin.Context) {
 
 	gpuReq, err := resource.ParseQuantity(pod.Gpu)
 	if err != nil {
-		c.JSON(http.StatusMethodNotAllowed, gin.H{
+		c.JSON(http.StatusOK, gin.H{
 			"code":    data.OPERATION_FAILURE,
 			"message": err.Error(),
 		})
@@ -132,7 +132,7 @@ func CreatePod(c *gin.Context) {
 	}
 	gpuLim, err := resource.ParseQuantity(pod.Gpulim)
 	if err != nil {
-		c.JSON(http.StatusMethodNotAllowed, gin.H{
+		c.JSON(http.StatusOK, gin.H{
 			"code":    data.OPERATION_FAILURE,
 			"message": err.Error(),
 		})
@@ -143,7 +143,8 @@ func CreatePod(c *gin.Context) {
 	// form pod's yaml
 	newPod := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: pod.Podname,
+			Name:      pod.Podname,
+			Namespace: pod.Namespace,
 		},
 		Spec: corev1.PodSpec{
 			Containers: []corev1.Container{
@@ -196,7 +197,7 @@ func CreatePod(c *gin.Context) {
 	// create pod
 	pod_container, err := tools.CreatePod(pod, newPod)
 	if err != nil {
-		c.JSON(http.StatusMethodNotAllowed, gin.H{
+		c.JSON(http.StatusOK, gin.H{
 			"code":    data.OPERATION_FAILURE,
 			"message": err.Error(),
 		})

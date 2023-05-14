@@ -14,7 +14,7 @@ func GetAllFiles(c *gin.Context) {
 
 	files, err := os.ReadDir(path)
 	if err != nil {
-		c.JSON(http.StatusMethodNotAllowed, gin.H{
+		c.JSON(http.StatusOK, gin.H{
 			"code":  data.OPERATION_FAILURE,
 			"error": err.Error(),
 		})
@@ -36,7 +36,7 @@ func GetAllFiles(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"code": http.StatusOK,
+		"code": data.SUCCESS,
 		"data": result,
 	})
 }
@@ -46,7 +46,7 @@ func DeleteFile(c *gin.Context) {
 
 	fi, err := os.Stat(path)
 	if err != nil {
-		c.JSON(http.StatusMethodNotAllowed, gin.H{
+		c.JSON(http.StatusOK, gin.H{
 			"code":  data.OPERATION_FAILURE,
 			"error": err.Error(),
 		})
@@ -56,7 +56,7 @@ func DeleteFile(c *gin.Context) {
 	if fi.IsDir() {
 		err = os.RemoveAll(path)
 		if err != nil {
-			c.JSON(http.StatusMethodNotAllowed, gin.H{
+			c.JSON(http.StatusOK, gin.H{
 				"code":  data.OPERATION_FAILURE,
 				"error": err.Error(),
 			})
@@ -66,7 +66,7 @@ func DeleteFile(c *gin.Context) {
 	} else {
 		err = os.Remove(path)
 		if err != nil {
-			c.JSON(http.StatusMethodNotAllowed, gin.H{
+			c.JSON(http.StatusOK, gin.H{
 				"code":  data.OPERATION_FAILURE,
 				"error": err.Error(),
 			})

@@ -77,7 +77,7 @@ func GetData(c *gin.Context) {
 	var evdata data.EVData
 	err := c.ShouldBindJSON(&evdata)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
+		c.JSON(http.StatusOK, gin.H{
 			"code":    data.API_PARAMETER_ERROR,
 			"message": fmt.Sprintf("Invalid request payload, err is %v", err.Error()),
 		})
@@ -88,7 +88,7 @@ func GetData(c *gin.Context) {
 	testfile := evdata.Logdir
 	f, err := os.Open(testfile)
 	if err != nil {
-		c.JSON(http.StatusMethodNotAllowed, gin.H{
+		c.JSON(http.StatusOK, gin.H{
 			"code":    data.OPERATION_FAILURE,
 			"message": err.Error(),
 		})
@@ -148,7 +148,7 @@ func GetData(c *gin.Context) {
 
 	err = tools.CalculateAvg(data.TestLossFile)
 	if err != nil {
-		c.JSON(http.StatusMethodNotAllowed, gin.H{
+		c.JSON(http.StatusOK, gin.H{
 			"code":    data.OPERATION_FAILURE,
 			"message": err.Error(),
 		})
@@ -157,7 +157,7 @@ func GetData(c *gin.Context) {
 	}
 	err = tools.CalculateAvg(data.TrainLossFile)
 	if err != nil {
-		c.JSON(http.StatusMethodNotAllowed, gin.H{
+		c.JSON(http.StatusOK, gin.H{
 			"code":    data.OPERATION_FAILURE,
 			"message": err.Error(),
 		})
@@ -165,4 +165,18 @@ func GetData(c *gin.Context) {
 		return
 	}
 
+	acc_json := tools.TxtToJson(data.AccFile)
+	test_json := tools.TxtToJson(data.TestLossFile)
+	train_json := tools.TxtToJson(data.TrainLossFile)
+
+	data_jSON := data.MyJSON{
+		JSON1: acc_json,
+		JSON2: test_json,
+		JSON3: train_json,
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"code": data.OPERATION_FAILURE,
+		"data": data_jSON,
+	})
 }

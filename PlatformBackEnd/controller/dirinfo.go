@@ -16,7 +16,7 @@ func GetDirInfo(c *gin.Context) {
 	var Dir data.DirData
 	err := c.ShouldBindJSON(&Dir)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
+		c.JSON(http.StatusOK, gin.H{
 			"code":    data.API_PARAMETER_ERROR,
 			"message": fmt.Sprintf("Invalid request payload, err is %v", err.Error()),
 		})
@@ -26,7 +26,7 @@ func GetDirInfo(c *gin.Context) {
 
 	output, err := tools.ExecCommand("du", "-h", Dir.Dir, "--max-depth", Dir.Depth)
 	if err != nil {
-		c.JSON(http.StatusMethodNotAllowed, gin.H{
+		c.JSON(http.StatusOK, gin.H{
 			"code":    data.OPERATION_FAILURE,
 			"message": err.Error(),
 		})

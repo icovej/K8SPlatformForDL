@@ -14,7 +14,7 @@ func Login(c *gin.Context) {
 	var user data.User
 	err := c.ShouldBindJSON(&user)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
+		c.JSON(http.StatusOK, gin.H{
 			"code":    data.OPERATION_FAILURE,
 			"message": fmt.Sprintf("Invalid request payload, err is %v", err.Error()),
 		})
@@ -24,7 +24,7 @@ func Login(c *gin.Context) {
 
 	users, err := tools.LoadUsers(data.UserFile)
 	if err != nil {
-		c.JSON(http.StatusMethodNotAllowed, gin.H{
+		c.JSON(http.StatusOK, gin.H{
 			"code":    data.OPERATION_FAILURE,
 			"message": err.Error(),
 		})
@@ -43,7 +43,7 @@ func Login(c *gin.Context) {
 	}
 
 	if flag == 1 {
-		c.JSON(http.StatusMethodNotAllowed, gin.H{
+		c.JSON(http.StatusOK, gin.H{
 			"code":    data.OPERATION_FAILURE,
 			"message": "Invalid credentials",
 		})

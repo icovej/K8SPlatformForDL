@@ -317,7 +317,7 @@ func WriteAtTail(filepath string, image string, flag int) error {
 	if flag == 0 {
 		s = "\n" + "RUN apt-get install -y " + image + "\n"
 	} else if flag == 1 {
-		s = "\n" + "RUN pip install -y " + image + "\n"
+		s = "\n" + "RUN pip install " + image + "\n"
 	}
 
 	_, err = file.WriteString(s)
@@ -457,7 +457,7 @@ func Core() gin.HandlerFunc {
 		c.Header("Access-Control-Allow-Credentials", "True")
 
 		if method == "OPTIONS" {
-			c.AbortWithStatus(http.StatusNoContent)
+			c.AbortWithStatus(http.StatusOK)
 		}
 
 		c.Next()
@@ -620,4 +620,38 @@ func getGPUMetrics(containerName string) (int64, error) {
 		glog.Errorf("Failed to get gpu data, the error is %v", err.Error())
 	}
 	return gpuUsage, nil
+}
+
+func TxtToJson(filepath string) string {
+	file, err := os.Open(filepath)
+	if err != nil {
+		fmt.Println("Failed to open file:", err)
+		return ""
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+	var keys []string
+	var values []string
+	for scanner.Scan() {
+		line := scanner.Text()
+		parts := strings.Split(line, " ")
+		if len(parts) != 2 {
+			continue
+		}
+		keys = append(keys, parts[0])
+		values = append(values, parts[1])
+	}
+
+	jsonData := make([][]string, 2)
+	jsonData[0] = keys
+	jsonData[1] = values
+
+	jsonBytes, err := json.Marshal(jsonData)
+	if err != nil {
+		fmt.Println("Failed to encode JSON:", err)
+		return ""
+	}
+
+	return string(jsonBytes)
 }
