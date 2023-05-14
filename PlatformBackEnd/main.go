@@ -72,6 +72,4 @@ func main() {
 	router.GET("/upload", controller.UploadFile)
 
 	router.Run(*port)
-	// 192.168.10.11
-	// router.Run("192.168.10.11:8080")
 }
