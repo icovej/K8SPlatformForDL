@@ -24,15 +24,13 @@ func GetDirInfo(c *gin.Context) {
 		return
 	}
 
-	dir := Dir.Dir
-	depth := Dir.Depth
-	output, err := tools.ExecCommand("du -h --max-depth=", depth, dir)
+	output, err := tools.ExecCommand("du", "-h", Dir.Dir, "--max-depth", Dir.Depth)
 	if err != nil {
 		c.JSON(http.StatusMethodNotAllowed, gin.H{
 			"code":    data.OPERATION_FAILURE,
 			"message": err.Error(),
 		})
-		glog.Errorf("Failed to get %v info, the error is %v", dir, err)
+		glog.Errorf("Failed to get %v info, the error is %v", Dir.Dir, err)
 		return
 	}
 

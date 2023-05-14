@@ -5,7 +5,6 @@ import (
 	"PlatformBackEnd/data"
 	"PlatformBackEnd/tools"
 	"flag"
-	"fmt"
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang/glog"
@@ -13,16 +12,15 @@ import (
 
 func main() {
 	// parse cmdline
-	var srcfilepath = flag.String("srcfilepath", "", "the original dockerfile path")
-	data.Srcfilepath = *srcfilepath
+	// var srcfilepath = flag.String("srcfilepath", "", "the original dockerfile path")
+	// data.Srcfilepath = *srcfilepath
+	// fmt.Printf("x = %v", *srcfilepath)
 
 	var logdir = flag.String("logdir", "", "The path to save glog")
 	flag.Lookup("log_dir").Value.Set(*logdir)
-
 	var port = flag.String("userport", ":8080", "the port to listen the platform")
-	flag.Parse()
-	fmt.Println(*port)
 
+	flag.Parse()
 	defer glog.Flush()
 	glog.Info("Succeed to start platform")
 
@@ -61,8 +59,11 @@ func main() {
 	router.POST("/monitor", controller.MonitorPod)
 
 	// Handle Dir
-	router.GET("/list", controller.GetAllFiles)
-	router.DELETE("/delete", controller.DeleteFile)
+	group := router.Group("/file")
+	{
+		group.GET("/list", controller.GetAllFiles)
+		group.DELETE("/delete", controller.DeleteFile)
+	}
 
 	// Get container data
 	router.POST("/ws", controller.GetContainerData)

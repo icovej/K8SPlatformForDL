@@ -51,7 +51,7 @@ var (
 	ErrInvalidChecksum = errors.New("invalid crc")
 	Crc32c             = crc32.MakeTable(crc32.Castagnoli)
 	// the basic path of dockerfile
-	Srcfilepath = ""
+	Srcfilepath = "/home/gpu-server/all_test/biyesheji/PlatformBackEnd/dockerfile"
 )
 
 // Api information structure

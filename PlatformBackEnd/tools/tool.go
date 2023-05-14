@@ -3,6 +3,7 @@ package tools
 import (
 	"PlatformBackEnd/data"
 	"bufio"
+	"bytes"
 	"context"
 	"encoding/json"
 	"flag"
@@ -257,7 +258,7 @@ func GetAvailableMemoryAndGPU() (uint64, int, map[int]uint64, error) {
 func CopyFile(filepath string, newFilepath string) error {
 	src, err_src := os.Open(filepath)
 	if err_src != nil {
-		glog.Errorf("Failed to open original dockerfile, the error is %v", err_src)
+		glog.Errorf("Failed to open original dockerfile: %v, the error is %v", filepath, err_src)
 		return err_src
 	}
 	defer src.Close()
@@ -304,17 +305,22 @@ func WriteAtBeginning(filename string, data []byte) error {
 }
 
 // Write new words at the tail of file
-func WriteAtTail(filepath string, image string) error {
-	file, err := os.OpenFile(filepath, os.O_WRONLY|os.O_APPEND, 0666)
+func WriteAtTail(filepath string, image string, flag int) error {
+	file, err := os.OpenFile(filepath, os.O_WRONLY|os.O_APPEND, 0644)
 	if err != nil {
 		glog.Errorf("Failed to open original dockerfile, the error is %v", err)
 		return err
 	}
 	defer file.Close()
 
-	writer := bufio.NewWriter(file)
-	s := "RUN pip install " + image + "\n"
-	_, err = writer.WriteString(s)
+	var s string
+	if flag == 0 {
+		s = "\n" + "RUN apt-get install -y " + image + "\n"
+	} else if flag == 1 {
+		s = "\n" + "RUN pip install -y " + image + "\n"
+	}
+
+	_, err = file.WriteString(s)
 	if err != nil {
 		glog.Errorf("Failed to open write file, the error is %v", err)
 		return err
@@ -323,15 +329,17 @@ func WriteAtTail(filepath string, image string) error {
 	return nil
 }
 
-func ExecCommand(command string, args ...string) ([]byte, error) {
+func ExecCommand(command string, args ...string) (string, error) {
 	cmd := exec.Command(command, args...)
-
-	output, err := cmd.Output()
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+	err := cmd.Run()
 	if err != nil {
-		glog.Errorf("Failed to exec, the error is %v", err.Error())
-		return nil, err
+		glog.Errorf("command %s %s failed: %v, %s", command, strings.Join(args, " "), err, stderr.String())
+		return "", err
 	}
-	return output, nil
+	return stdout.String(), nil
 }
 
 // Create work path

@@ -50,9 +50,11 @@ func CreateImage(c *gin.Context) {
 		return
 	}
 
+	glog.Info("53")
+
 	// Import python used in user's pod
 	pyVersion := image_data.Pythonversion
-	err = tools.WriteAtTail(dstFilepath, pyVersion)
+	err = tools.WriteAtTail(dstFilepath, pyVersion, 0)
 	if err != nil {
 		c.JSON(http.StatusMethodNotAllowed, gin.H{
 			"code":    data.API_PARAMETER_ERROR,
@@ -66,7 +68,7 @@ func CreateImage(c *gin.Context) {
 	// And write into dockerfile whoes path is user's working path
 	imageArray := image_data.Imagearray
 	for i := range imageArray {
-		err = tools.WriteAtTail(dstFilepath, imageArray[i])
+		err = tools.WriteAtTail(dstFilepath, imageArray[i], 1)
 		if err != nil {
 			c.JSON(http.StatusMethodNotAllowed, gin.H{
 				"code":    data.API_PARAMETER_ERROR,
