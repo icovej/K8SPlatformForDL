@@ -2,7 +2,6 @@ package controller
 
 import (
 	"PlatformBackEnd/data"
-	"io/ioutil"
 	"net/http"
 	"os"
 
@@ -13,7 +12,7 @@ import (
 func GetAllFiles(c *gin.Context) {
 	path := c.PostForm("path")
 
-	files, err := ioutil.ReadDir(path)
+	files, err := os.ReadDir(path)
 	if err != nil {
 		c.JSON(http.StatusMethodNotAllowed, gin.H{
 			"code":  data.OPERATION_FAILURE,
