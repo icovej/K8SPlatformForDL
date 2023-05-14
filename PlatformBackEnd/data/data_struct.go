@@ -30,9 +30,9 @@ const (
 	Accuracy    = "test_accuracy"
 
 	// three data file to save data parsed from event file
-	TestLossFile  = "test_loss_all.txt"
-	TrainLossFile = "train_loss_all.txt"
-	AccFile       = "acc.txt"
+	TestLossFile  = "model_data/test_loss_all.txt"
+	TrainLossFile = "model_data/train_loss_all.txt"
+	AccFile       = "model_data/acc.txt"
 
 	// about token expire
 	TOKEN_MAX_EXPIRE_HOUR      = 1 * 24 * 7
