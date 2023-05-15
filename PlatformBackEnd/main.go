@@ -52,6 +52,9 @@ func main() {
 		// Registe
 		router.POST("/register", controller.RegisterHandler)
 
+		// Delete
+		router.POST("/delete", controller.DeleteUser)
+
 		// Query Dir Info
 		router.GET("/search_dir", controller.GetDirInfo)
 
