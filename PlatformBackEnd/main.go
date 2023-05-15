@@ -55,8 +55,10 @@ func main() {
 		// Delete
 		router.POST("/delete", controller.DeleteUser)
 
-		// Query Dir Info
+		// Dir Opts
 		router.GET("/search_dir", controller.GetDirInfo)
+		router.POST("/create_dir", controller.CreateDir)
+		router.POST("/delete_dir", controller.DeleteDir)
 
 		// Create Image
 		router.POST("/image", controller.CreateImage)
