@@ -45,6 +45,8 @@ func main() {
 
 	// Login
 	router.POST("/login", controller.Login)
+	router.POST("/getuser_notoken", controller.GetUserInfo_NoToken)
+	router.Static("/logs", flag.Lookup("log_dir").Value.String())
 
 	api := router.Group("/api")
 	api.Use(tools.JWTAuth())
