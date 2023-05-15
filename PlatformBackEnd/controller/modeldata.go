@@ -112,13 +112,44 @@ func GetData(c *gin.Context) {
 		events = append(events, ev)
 	}
 
-	test_loss, _ := os.Create(data.TestLossFile)
+	j := tools.NewJWT()
+	tokenString := c.GetHeader("token")
+	if tokenString == "" {
+		c.JSON(http.StatusOK, gin.H{
+			"code":    data.SUCCESS,
+			"message": "Failed to get token, because the token is empty!",
+		})
+		glog.Error("Failed to get token, because the token is empty!")
+		return
+	}
+	token, err := j.Parse_Token(tokenString)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{
+			"code":    data.SUCCESS,
+			"message": fmt.Sprintf("Failed to parse token, the error is %v", err.Error()),
+		})
+		glog.Errorf("Failed to parse token, the error is %v", err.Error())
+		return
+	}
+
+	fullpath := token.Path + "/" + "model_data/"
+	err = tools.CreatePath(fullpath, 0777)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{
+			"code":    data.SUCCESS,
+			"message": fmt.Sprintf("Failed to create file model_data under workdir, the error is %v", err.Error()),
+		})
+		glog.Errorf("Failed to create file model_data under workdir, the error is %v", err.Error())
+		return
+	}
+
+	test_loss, _ := os.Create(fullpath + data.TestLossFile)
 	defer test_loss.Close()
 
-	train_loss, _ := os.Create(data.TrainLossFile)
+	train_loss, _ := os.Create(fullpath + data.TrainLossFile)
 	defer train_loss.Close()
 
-	acc, _ := os.Create(data.AccFile)
+	acc, _ := os.Create(fullpath + data.AccFile)
 	defer acc.Close()
 
 	for i := range events {
@@ -146,7 +177,7 @@ func GetData(c *gin.Context) {
 		}
 	}
 
-	err = tools.CalculateAvg(data.TestLossFile)
+	err = tools.CalculateAvg(fullpath + data.TestLossFile)
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"code":    data.OPERATION_FAILURE,
@@ -155,7 +186,7 @@ func GetData(c *gin.Context) {
 		glog.Errorf("Failed to calculate test loss avg, the err is %v", err.Error())
 		return
 	}
-	err = tools.CalculateAvg(data.TrainLossFile)
+	err = tools.CalculateAvg(fullpath + data.TrainLossFile)
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"code":    data.OPERATION_FAILURE,
@@ -165,9 +196,9 @@ func GetData(c *gin.Context) {
 		return
 	}
 
-	acc_json := tools.TxtToJson(data.AccFile)
-	test_json := tools.TxtToJson(data.TestLossFile)
-	train_json := tools.TxtToJson(data.TrainLossFile)
+	acc_json := tools.TxtToJson(fullpath + data.AccFile)
+	test_json := tools.TxtToJson(fullpath + data.TestLossFile)
+	train_json := tools.TxtToJson(fullpath + data.TrainLossFile)
 
 	data_jSON := data.MyJSON{
 		JSON1: acc_json,
@@ -176,7 +207,7 @@ func GetData(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"code": data.OPERATION_FAILURE,
+		"code": data.SUCCESS,
 		"data": data_jSON,
 	})
 }

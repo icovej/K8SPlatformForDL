@@ -5,7 +5,6 @@ import (
 	"PlatformBackEnd/tools"
 	"fmt"
 	"net/http"
-	"os"
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang/glog"
@@ -84,7 +83,7 @@ func RegisterHandler(c *gin.Context) {
 	}
 
 	// create user's path
-	err = os.MkdirAll(user.Path, 0777)
+	err = tools.CreatePath(user.Path, 0777)
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"code":    data.OPERATION_FAILURE,

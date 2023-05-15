@@ -36,18 +36,23 @@ func UploadFile(c *gin.Context) {
 
 	j := tools.NewJWT()
 	tokenString := c.GetHeader("token")
-	fmt.Printf("token = %v", tokenString)
 	if tokenString == "" {
-		// 没有传递token
-		fmt.Println("1111")
+		c.JSON(http.StatusOK, gin.H{
+			"code":    data.SUCCESS,
+			"message": "Failed to get token, because the token is empty!",
+		})
+		glog.Error("Failed to get token, because the token is empty!")
 		return
 	}
 	token, err := j.Parse_Token(tokenString)
 	if err != nil {
-		fmt.Println(err.Error())
+		c.JSON(http.StatusOK, gin.H{
+			"code":    data.SUCCESS,
+			"message": fmt.Sprintf("Failed to parse token, the error is %v", err.Error()),
+		})
+		glog.Errorf("Failed to parse token, the error is %v", err.Error())
 		return
 	}
-	// claims, _ := token.Claims.(*data.CustomClaims)
 
 	uploadpath := token.Path + "/" + filepath.Base(file.Filename)
 

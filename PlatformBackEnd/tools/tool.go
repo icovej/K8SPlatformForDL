@@ -625,7 +625,7 @@ func getGPUMetrics(containerName string) (int64, error) {
 func TxtToJson(filepath string) string {
 	file, err := os.Open(filepath)
 	if err != nil {
-		fmt.Println("Failed to open file:", err)
+		glog.Errorf("Failed to open file: %v", err.Error())
 		return ""
 	}
 	defer file.Close()
@@ -649,7 +649,7 @@ func TxtToJson(filepath string) string {
 
 	jsonBytes, err := json.Marshal(jsonData)
 	if err != nil {
-		fmt.Println("Failed to encode JSON:", err)
+		glog.Errorf("Failed to encode JSON: %v", err.Error())
 		return ""
 	}
 
