@@ -50,12 +50,12 @@ func (r *Reader) Next() (*util.Event, error) {
 	buf.Reset()
 
 	if _, err = io.CopyN(buf, f, int64(length)); err != nil {
-		glog.Error("Failed to copy the header of event file")
+		glog.Errorf("Failed to copy the header of event file, the error is %v", err.Error())
 		return nil, err
 	}
 
 	if _, err = io.CopyN(buf, f, data.FooterSize); err != nil {
-		glog.Error("Failed to copy the tail of event file")
+		glog.Errorf("Failed to copy the tail of event file, the error is %v", err.Error())
 		return nil, err
 	}
 
@@ -79,37 +79,10 @@ func GetData(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"code":    data.API_PARAMETER_ERROR,
-			"message": fmt.Sprintf("Invalid request payload, err is %v", err.Error()),
+			"message": fmt.Sprintf("Method GetData gets invalid request payload, err is %v", err.Error()),
 		})
-		glog.Error("Method GetData gets invalid request payload")
+		glog.Errorf("Method GetData gets invalid request payload, the error is %v", err.Error())
 		return
-	}
-
-	testfile := evdata.Logdir
-	f, err := os.Open(testfile)
-	if err != nil {
-		c.JSON(http.StatusOK, gin.H{
-			"code":    data.OPERATION_FAILURE,
-			"message": err.Error(),
-		})
-		glog.Errorf("Failed to open log dir, the error is %v", err.Error())
-		return
-	}
-	defer f.Close()
-
-	r := NewReader(f)
-	events := make([]*util.Event, 0, 99)
-
-	for {
-		ev, err := r.Next()
-		if err != nil {
-			if err == io.EOF {
-				break
-			} else if err != nil {
-				glog.Errorf("Failed to read event file, the error is %v", err.Error())
-			}
-		}
-		events = append(events, ev)
 	}
 
 	j := tools.NewJWT()
@@ -132,7 +105,35 @@ func GetData(c *gin.Context) {
 		return
 	}
 
-	fullpath := token.Path + "/" + "model_data/"
+	logdir := token.Path + "/log/" + evdata.Logdir
+
+	f, err := os.Open(logdir)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{
+			"code":    data.OPERATION_FAILURE,
+			"message": fmt.Sprintf("Failed to open log dir, the error is %v", err.Error()),
+		})
+		glog.Errorf("Failed to open log dir, the error is %v", err.Error())
+		return
+	}
+	defer f.Close()
+
+	r := NewReader(f)
+	events := make([]*util.Event, 0, 99)
+
+	for {
+		ev, err := r.Next()
+		if err != nil {
+			if err == io.EOF {
+				break
+			} else if err != nil {
+				glog.Errorf("Failed to read event file, the error is %v", err.Error())
+			}
+		}
+		events = append(events, ev)
+	}
+
+	fullpath := token.Path + "/" + "model_data/" + evdata.Logdir + "/"
 	err = tools.CreatePath(fullpath, 0777)
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
@@ -181,7 +182,7 @@ func GetData(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"code":    data.OPERATION_FAILURE,
-			"message": err.Error(),
+			"message": fmt.Sprintf("Failed to calculate test loss avg, the err is %v", err.Error()),
 		})
 		glog.Errorf("Failed to calculate test loss avg, the err is %v", err.Error())
 		return
@@ -190,7 +191,7 @@ func GetData(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"code":    data.OPERATION_FAILURE,
-			"message": err.Error(),
+			"message": fmt.Sprintf("Failed to calculate train loss avg, the err is %v", err.Error()),
 		})
 		glog.Errorf("Failed to calculate train loss avg, the err is %v", err.Error())
 		return

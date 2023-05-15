@@ -12,14 +12,15 @@ import (
 )
 
 func GetAllUsers(c *gin.Context) {
-	path := "/home/gpu-server/all_test/biyesheji/PlatformBackEnd/User.json"
+	path, _ := os.Getwd()
+	path = path + "/" + data.UserFile
 	file, err := os.ReadFile(path)
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"code":    data.OPERATION_FAILURE,
 			"message": fmt.Sprintf("Failed to read user file, err is %v", err.Error()),
 		})
-		glog.Error("Failed to read user file")
+		glog.Errorf("Failed to read user file, the error is %v", err.Error())
 		return
 	}
 
@@ -30,7 +31,7 @@ func GetAllUsers(c *gin.Context) {
 			"code":    data.OPERATION_FAILURE,
 			"message": fmt.Sprintf("Failed to unmarshal user file, err is %v", err.Error()),
 		})
-		glog.Error("Failed to unmarshal user file")
+		glog.Errorf("Failed to unmarshal user file, the error is %v", err.Error())
 		return
 	}
 

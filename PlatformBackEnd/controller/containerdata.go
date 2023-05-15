@@ -17,7 +17,7 @@ var upgrader = websocket.Upgrader{
 func GetContainerData(c *gin.Context) {
 	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
-		glog.Errorf("Error upgrading to WebSocket: %v", err.Error())
+		glog.Errorf("Failed to upgrade WebSocket: %v", err.Error())
 		return
 	}
 

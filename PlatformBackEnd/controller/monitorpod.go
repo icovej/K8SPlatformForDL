@@ -16,9 +16,9 @@ func MonitorPod(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"code":    data.API_PARAMETER_ERROR,
-			"message": fmt.Sprintf("Invalid request payload, err is %v", err.Error()),
+			"message": fmt.Sprintf("Method GetDirInfo gets invalid request payload, err is %v", err.Error()),
 		})
-		glog.Errorf("Method GetDirInfo gets invalid request payload")
+		glog.Errorf("Method GetDirInfo gets invalid request payload, the error is %v", err.Error())
 		return
 	}
 
@@ -26,7 +26,7 @@ func MonitorPod(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"code":    data.API_PARAMETER_ERROR,
-			"message": err.Error(),
+			"message": fmt.Sprintf("Failed to get pod info, the error is %v", err),
 		})
 		glog.Errorf("Failed to get pod info, the error is %v", err)
 		return
@@ -36,7 +36,7 @@ func MonitorPod(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"code":    data.API_PARAMETER_ERROR,
-			"message": err.Error(),
+			"message": fmt.Sprintf("Failed to get all namespace, the error is %v", err),
 		})
 		glog.Errorf("Failed to get all namespace, the error is %v", err)
 		return
@@ -44,7 +44,7 @@ func MonitorPod(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"code":       data.SUCCESS,
-		"message":    "Succeed to get pod info",
+		"message":    "Succeed to get pod and namespace info",
 		"pods":       podList,
 		"namespaces": nsList,
 	})

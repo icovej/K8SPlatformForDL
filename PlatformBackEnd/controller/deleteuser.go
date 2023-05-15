@@ -18,9 +18,9 @@ func DeleteUser(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"code":    data.OPERATION_FAILURE,
-			"message": fmt.Sprintf("Invalid request payload, err is %v", err.Error()),
+			"message": fmt.Sprintf("Method DeleteUser gets invalid request payload, err is %v", err.Error()),
 		})
-		glog.Error("Method RegisterHandler gets invalid request payload")
+		glog.Error("Method DeleteUser gets invalid request payload")
 		return
 	}
 
@@ -28,9 +28,9 @@ func DeleteUser(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"code":    data.OPERATION_FAILURE,
-			"message": err.Error(),
+			"message": fmt.Sprintf("Failed to load saved users info, the error is %v", err.Error()),
 		})
-		glog.Error("Failed to load saved users info")
+		glog.Errorf("Failed to load saved users info, the error is %v", err.Error())
 		return
 	}
 
@@ -45,9 +45,9 @@ func DeleteUser(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"code":    data.OPERATION_FAILURE,
-			"message": err.Error(),
+			"message": fmt.Sprintf("Failed to convert to user info, the error is %v", err.Error()),
 		})
-		glog.Error("Failed to convert to user info")
+		glog.Errorf("Failed to convert to user info, the error is %v", err.Error())
 		return
 	}
 
@@ -55,14 +55,14 @@ func DeleteUser(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"code":    data.OPERATION_FAILURE,
-			"message": err.Error(),
+			"message": fmt.Sprintf("Failed to re-write userfile after delete, the error is %v", err.Error()),
 		})
-		glog.Error("Failed to re-write userfile after delete")
+		glog.Errorf("Failed to re-write userfile after delete, the error is %v", err.Error())
 		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"code":    data.SUCCESS,
-		"message": "Succeed to delete user",
+		"message": fmt.Sprintf("Succeed to delete user, user.name = %v", user.Username),
 	})
 }

@@ -137,9 +137,9 @@ func GenerateToken(c *gin.Context, user data.User) {
 	if err != nil {
 		c.JSON(http.StatusMethodNotAllowed, gin.H{
 			"code":    data.OPERATION_FAILURE,
-			"message": err.Error(),
+			"message": fmt.Sprintf("Failed to create token, the error is %v", err.Error()),
 		})
-		glog.Error("Failed to create token, the error is %v", err.Error())
+		glog.Errorf("Failed to create token, the error is %v", err.Error())
 		return
 	}
 

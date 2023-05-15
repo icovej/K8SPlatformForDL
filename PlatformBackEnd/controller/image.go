@@ -18,7 +18,7 @@ func CreateImage(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"code":    data.API_PARAMETER_ERROR,
-			"message": fmt.Sprintf("Invalid request payload, err is %v", err.Error()),
+			"message": fmt.Sprintf("Method CreateImage gets invalid request payload, err is %v", err.Error()),
 		})
 		glog.Errorf("Method CreateImage gets invalid request payload")
 		return
@@ -31,9 +31,9 @@ func CreateImage(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"code":    data.OPERATION_FAILURE,
-			"message": err.Error(),
+			"message": fmt.Sprintf("Failed to create dockerfile, the error is %v", err.Error()),
 		})
-		glog.Errorf("Failed to create dockerfile, the error is %v", err)
+		glog.Errorf("Failed to create dockerfile, the error is %v", err.Error())
 		return
 	}
 
@@ -44,9 +44,9 @@ func CreateImage(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"code":    data.API_PARAMETER_ERROR,
-			"message": err.Error(),
+			"message": fmt.Sprintf("Failed to write osVersion to dockerfile, the error is %v", err.Error()),
 		})
-		glog.Errorf("Failed to write osVersion to dockerfile, the error is %v", err)
+		glog.Errorf("Failed to write osVersion to dockerfile, the error is %v", err.Error())
 		return
 	}
 
@@ -56,9 +56,9 @@ func CreateImage(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"code":    data.API_PARAMETER_ERROR,
-			"message": err.Error(),
+			"message": fmt.Sprintf("Failed to write PyVersion to dockerfile, the error is %v", err.Error()),
 		})
-		glog.Errorf("Failed to write PyVersion to dockerfile, the error is %v", err)
+		glog.Errorf("Failed to write PyVersion to dockerfile, the error is %v", err.Error())
 		return
 	}
 
@@ -72,9 +72,9 @@ func CreateImage(c *gin.Context) {
 		if err != nil {
 			c.JSON(http.StatusOK, gin.H{
 				"code":    data.API_PARAMETER_ERROR,
-				"message": err.Error(),
+				"message": fmt.Sprintf("Failed to write image to dockerfile, the error is %v", err.Error()),
 			})
-			glog.Errorf("Failed to write image to dockerfile, the error is %v", err)
+			glog.Errorf("Failed to write image to dockerfile, the error is %v", err.Error())
 			return
 		}
 	}
@@ -86,9 +86,9 @@ func CreateImage(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"code: ":    data.API_PARAMETER_ERROR,
-			"message: ": err.Error(),
+			"message: ": fmt.Sprintf("Failed to exec docker build, the error is %v", err.Error()),
 		})
-		glog.Errorf("Failed to exec docker build, the error is %v", err)
+		glog.Errorf("Failed to exec docker build, the error is %v", err.Error())
 		return
 	}
 

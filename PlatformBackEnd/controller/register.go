@@ -16,9 +16,9 @@ func RegisterHandler(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"code":    data.OPERATION_FAILURE,
-			"message": fmt.Sprintf("Invalid request payload, err is %v", err.Error()),
+			"message": fmt.Sprintf("Method RegisterHandler gets invalid request payload, err is %v", err.Error()),
 		})
-		glog.Error("Method RegisterHandler gets invalid request payload")
+		glog.Errorf("Method RegisterHandler gets invalid request payload, the error is %v", err.Error())
 		return
 	}
 
@@ -27,9 +27,9 @@ func RegisterHandler(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"code":    data.OPERATION_FAILURE,
-			"message": err.Error(),
+			"message": fmt.Sprintf("Failed to check user info, the error is %v", err.Error()),
 		})
-		glog.Errorf("Failed to check user info, the error is %v", err)
+		glog.Errorf("Failed to check user info, the error is %v", err.Error())
 		return
 	}
 	for _, u := range users {
@@ -76,9 +76,9 @@ func RegisterHandler(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"code":    data.OPERATION_FAILURE,
-			"message": "Failed to write users file!",
+			"message": fmt.Sprintf("Failed to write users file, the error is %v", err.Error()),
 		})
-		glog.Error("Failed to write users file!")
+		glog.Errorf("Failed to write users file, the error is %v", err.Error())
 		return
 	}
 
@@ -87,14 +87,47 @@ func RegisterHandler(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"code":    data.OPERATION_FAILURE,
-			"message": "Failed to create user's path!",
+			"message": fmt.Sprintf("Failed to create user's path!, the error is %v", err.Error()),
 		})
 		glog.Errorf("Failed to create user's path!, the error is %v", err.Error())
 		return
 	}
 
+	log_path := user.Path + "/log"
+	err = tools.CreatePath(log_path, 0777)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{
+			"code":    data.OPERATION_FAILURE,
+			"message": fmt.Sprintf("Failed to create log_path!, the error is %v", err.Error()),
+		})
+		glog.Errorf("Failed to create log_path!, the error is %v", err.Error())
+		return
+	}
+
+	data_path := user.Path + "/data"
+	err = tools.CreatePath(data_path, 0777)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{
+			"code":    data.OPERATION_FAILURE,
+			"message": fmt.Sprintf("Failed to create data_path!, the error is %v", err.Error()),
+		})
+		glog.Errorf("Failed to create data_path!, the error is %v", err.Error())
+		return
+	}
+
+	code_path := user.Path + "/code"
+	err = tools.CreatePath(code_path, 0777)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{
+			"code":    data.OPERATION_FAILURE,
+			"message": fmt.Sprintf("Failed to create code_path!, the error is %v", err.Error()),
+		})
+		glog.Errorf("Failed to create code_path!, the error is %v", err.Error())
+		return
+	}
+
 	c.JSON(http.StatusOK, gin.H{
 		"code":    data.SUCCESS,
-		"message": "Succeed to registe",
+		"message": fmt.Sprintf("Succeed to registe user, user.name = %v", user.Username),
 	})
 }

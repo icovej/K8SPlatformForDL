@@ -24,13 +24,35 @@ func GetDirInfo(c *gin.Context) {
 		return
 	}
 
-	output, err := tools.ExecCommand("du", "-h", Dir.Dir, "--max-depth", Dir.Depth)
+	j := tools.NewJWT()
+	tokenString := c.GetHeader("token")
+	if tokenString == "" {
+		c.JSON(http.StatusOK, gin.H{
+			"code":    data.SUCCESS,
+			"message": "Failed to get token, because the token is empty!",
+		})
+		glog.Error("Failed to get token, because the token is empty!")
+		return
+	}
+	token, err := j.Parse_Token(tokenString)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{
+			"code":    data.SUCCESS,
+			"message": fmt.Sprintf("Failed to parse token, the error is %v", err.Error()),
+		})
+		glog.Errorf("Failed to parse token, the error is %v", err.Error())
+		return
+	}
+
+	path := token.Path + "/" + Dir.Dir
+
+	output, err := tools.ExecCommand("du", "-h", path, "--max-depth", Dir.Depth)
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"code":    data.OPERATION_FAILURE,
-			"message": err.Error(),
+			"message": fmt.Sprintf("Failed to get %v info, the error is %v", path, err),
 		})
-		glog.Errorf("Failed to get %v info, the error is %v", Dir.Dir, err)
+		glog.Errorf("Failed to get %v info, the error is %v", path, err)
 		return
 	}
 
@@ -45,7 +67,7 @@ func GetDirInfo(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, gin.H{
 		"code":    data.SUCCESS,
-		"message": "Succeed to get fir info",
+		"message": fmt.Sprintf("Succeed to get dir %v info", path),
 		"data":    result,
 	})
 }
@@ -94,7 +116,7 @@ func CreateDir(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"code":    data.SUCCESS,
-		"message": "Succeed to create dir",
+		"message": fmt.Sprintf("Succeed to create dir %v", Dir.Dir),
 	})
 }
 
@@ -104,17 +126,39 @@ func DeleteDir(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"code":    data.API_PARAMETER_ERROR,
-			"message": fmt.Sprintf("Invalid request payload, err is %v", err.Error()),
+			"message": fmt.Sprintf("Method DeleteDir gets invalid request payload, err is %v", err.Error()),
 		})
-		glog.Error("Method GetDirInfo gets invalid request payload")
+		glog.Error("Method DeleteDir gets invalid request payload")
 		return
 	}
 
-	_, err = tools.ExecCommand("rm", "-rf", Dir.Dir)
+	j := tools.NewJWT()
+	tokenString := c.GetHeader("token")
+	if tokenString == "" {
+		c.JSON(http.StatusOK, gin.H{
+			"code":    data.SUCCESS,
+			"message": "Failed to get token, because the token is empty!",
+		})
+		glog.Error("Failed to get token, because the token is empty!")
+		return
+	}
+	token, err := j.Parse_Token(tokenString)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{
+			"code":    data.SUCCESS,
+			"message": fmt.Sprintf("Failed to parse token, the error is %v", err.Error()),
+		})
+		glog.Errorf("Failed to parse token, the error is %v", err.Error())
+		return
+	}
+
+	path := token.Path + "/" + Dir.Dir
+
+	_, err = tools.ExecCommand("rm", "-rf", path)
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"code":    data.OPERATION_FAILURE,
-			"message": err.Error(),
+			"message": fmt.Sprintf("Failed to delete dir %v, the error is %v", Dir.Dir, err),
 		})
 		glog.Errorf("Failed to delete dir %v, the error is %v", Dir.Dir, err)
 		return
@@ -122,6 +166,6 @@ func DeleteDir(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"code":    data.SUCCESS,
-		"message": "Succeed to delete dir",
+		"message": fmt.Sprintf("Succeed to delete dir %v", Dir.Dir),
 	})
 }

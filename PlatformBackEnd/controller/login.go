@@ -26,9 +26,9 @@ func Login(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"code":    data.OPERATION_FAILURE,
-			"message": err.Error(),
+			"message": fmt.Sprintf("Failed to load saved users info, the error is %v", err.Error()),
 		})
-		glog.Error("Failed to load saved users info")
+		glog.Errorf("Failed to load saved users info, the error is %v", err.Error())
 		return
 	}
 

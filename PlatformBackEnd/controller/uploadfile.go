@@ -5,6 +5,7 @@ import (
 	"PlatformBackEnd/tools"
 	"fmt"
 	"net/http"
+	"os"
 	"path/filepath"
 
 	"github.com/gin-gonic/gin"
@@ -15,12 +16,14 @@ func UploadFile(c *gin.Context) {
 	file, err := c.FormFile("file")
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
-			"code":    data.SUCCESS,
-			"message": fmt.Sprintf("Invalid request payload, err is %v", err.Error()),
+			"code":    data.OPERATION_FAILURE,
+			"message": fmt.Sprintf("Method UploadFile gets invalid request payload, err is %v", err.Error()),
 		})
-		glog.Error("Method UploadFile gets invalid request payload")
+		glog.Errorf("Method UploadFile gets invalid request payload, the error is %v", err.Error())
 		return
 	}
+
+	path := c.PostForm("path")
 
 	// cookie, err := c.Request.Cookie("token")
 	// if err != nil {
@@ -54,7 +57,21 @@ func UploadFile(c *gin.Context) {
 		return
 	}
 
-	uploadpath := token.Path + "/" + filepath.Base(file.Filename)
+	father_path := token.Path + "/" + path
+	_, err = os.Stat(father_path)
+	if err != nil {
+		err = tools.CreatePath(father_path, 0777)
+		if err != nil {
+			c.JSON(http.StatusOK, gin.H{
+				"code":    data.SUCCESS,
+				"message": fmt.Sprintf("Failed to create path %v, the error is %v", father_path, err.Error()),
+			})
+			glog.Errorf("Failed to create path %v, the error is %v", father_path, err.Error())
+			return
+		}
+	}
+
+	uploadpath := father_path + "/" + filepath.Base(file.Filename)
 
 	err = c.SaveUploadedFile(file, uploadpath)
 	if err != nil {
@@ -62,12 +79,12 @@ func UploadFile(c *gin.Context) {
 			"code":    data.SUCCESS,
 			"message": fmt.Sprintf("Failed to upload file, the error is %v", err.Error()),
 		})
-		glog.Error("Failed to get workpath from JWT, Please check it")
+		glog.Errorf("Failed to get workpath from JWT, Please check it. The error is %v", err.Error())
 		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"code":    data.SUCCESS,
-		"message": "Succeed to upload file",
+		"message": fmt.Sprintf("Succeed to upload file, file name is %v", file.Filename),
 	})
 }
