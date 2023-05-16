@@ -95,7 +95,7 @@ func GetData(c *gin.Context) {
 		glog.Error("Failed to get token, because the token is empty!")
 		return
 	}
-	token, err := j.Parse_Token(tokenString)
+	token, err := j.ParseToken(tokenString)
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"code":    data.SUCCESS,
@@ -201,7 +201,7 @@ func GetData(c *gin.Context) {
 	test_json := tools.TxtToJson(fullpath + data.TestLossFile)
 	train_json := tools.TxtToJson(fullpath + data.TrainLossFile)
 
-	data_jSON := data.MyJSON{
+	data_jSON := data.DataJSON{
 		JSON1: acc_json,
 		JSON2: test_json,
 		JSON3: train_json,

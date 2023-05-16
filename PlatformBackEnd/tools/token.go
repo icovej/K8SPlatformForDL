@@ -36,29 +36,6 @@ func (j *JWT) CreateToken(claims data.CustomClaims) (string, error) {
 	return token.SignedString(j.SigningKey)
 }
 
-// Parse tokne
-// TODO: some signs haven't been used
-func (j *JWT) ParseToken(tokenString string) (*jwt.Token, error) {
-	token, err := jwt.ParseWithClaims(tokenString, &data.CustomClaims{}, func(token *jwt.Token) (interface{}, error) {
-		return j.SigningKey, nil
-	})
-	if err != nil {
-		if ve, ok := err.(*jwt.ValidationError); ok {
-			if ve.Errors&jwt.ValidationErrorMalformed != 0 {
-				return nil, data.TokenMalformed
-			} else if ve.Errors&jwt.ValidationErrorExpired != 0 {
-				// Token is expired
-				return nil, data.TokenExpired
-			} else if ve.Errors&jwt.ValidationErrorNotValidYet != 0 {
-				return nil, data.TokenNotValidYet
-			} else {
-				return nil, data.TokenInvalid
-			}
-		}
-	}
-	return token, nil
-}
-
 // JWT middleware
 func JWTAuth() gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -72,10 +49,8 @@ func JWTAuth() gin.HandlerFunc {
 			return
 		}
 
-		glog.Info("Get token: ", tokenString)
-
 		j := NewJWT()
-		token, err := j.ParseToken(tokenString)
+		claims, err := j.ParseToken(tokenString)
 		if err != nil && err == data.TokenExpired {
 			c.JSON(http.StatusForbidden, gin.H{
 				"code":    data.OPERATION_FAILURE,
@@ -84,38 +59,7 @@ func JWTAuth() gin.HandlerFunc {
 			glog.Error("Token has been expired")
 			return
 		}
-		if claims, ok := token.Claims.(*data.CustomClaims); ok && token.Valid {
-			if !claims.VerifyExpiresAt(time.Now(), false) {
-				c.JSON(http.StatusForbidden, gin.H{
-					"code":    data.OPERATION_FAILURE,
-					"message": "Access token expired",
-				})
-				glog.Error("Access token expired")
-			}
-			if t := claims.ExpiresAt.Time.Add(-time.Minute * data.TOKEN_MAX_REMAINING_MINUTE); t.Before(time.Now()) {
-				claims := data.CustomClaims{
-					Username: claims.Username,
-					Role:     claims.Role,
-					Path:     claims.Path,
-					RegisteredClaims: jwt.RegisteredClaims{
-						ExpiresAt: &jwt.NumericDate{Time: time.Now().Add(data.TOKEN_MAX_EXPIRE_HOUR * time.Hour)},
-					},
-				}
-				token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-				tokenString, _ := token.SignedString(j.SigningKey)
-				c.Header("new-token", tokenString)
-			}
-			c.Set("claims", claims)
-		} else {
-			c.JSON(http.StatusForbidden, gin.H{
-				"code":    data.OPERATION_FAILURE,
-				"message": fmt.Sprintf("Failed to parse claims, the error is %v", err.Error()),
-			})
-			glog.Errorf("Failed to parse claims, the error is %v", err.Error())
-			return
-		}
-
-		c.Next()
+		c.Set("claims", claims)
 	}
 }
 
@@ -128,8 +72,13 @@ func GenerateToken(c *gin.Context, user data.User) {
 		Username: user.Username,
 		Role:     user.Role,
 		Path:     user.Path,
-		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: &jwt.NumericDate{Time: time.Now().Add(data.TOKEN_MAX_EXPIRE_HOUR * time.Hour)},
+		// RegisteredClaims: jwt.RegisteredClaims{
+		// 	ExpiresAt: &jwt.NumericDate{Time: time.Now().Add(data.TOKEN_MAX_EXPIRE_HOUR * time.Hour)},
+		// },
+		StandardClaims: jwt.StandardClaims{
+			NotBefore: int64(time.Now().Unix() - 1000), // 签名生效时间
+			ExpiresAt: int64(time.Now().Unix() + 3600), // 过期时间 一小时
+			Issuer:    data.SignKey,                    //签名的发行者
 		},
 	}
 
@@ -174,7 +123,7 @@ func GetDataByTime(c *gin.Context) {
 	}
 }
 
-func (j *JWT) Parse_Token(tokenString string) (*data.CustomClaims, error) {
+func (j *JWT) ParseToken(tokenString string) (*data.CustomClaims, error) {
 	token, err := jwt.ParseWithClaims(tokenString, &data.CustomClaims{}, func(token *jwt.Token) (interface{}, error) {
 		return j.SigningKey, nil
 	})
@@ -183,7 +132,6 @@ func (j *JWT) Parse_Token(tokenString string) (*data.CustomClaims, error) {
 			if ve.Errors&jwt.ValidationErrorMalformed != 0 {
 				return nil, data.TokenMalformed
 			} else if ve.Errors&jwt.ValidationErrorExpired != 0 {
-				// Token is expired
 				return nil, data.TokenExpired
 			} else if ve.Errors&jwt.ValidationErrorNotValidYet != 0 {
 				return nil, data.TokenNotValidYet
@@ -196,4 +144,22 @@ func (j *JWT) Parse_Token(tokenString string) (*data.CustomClaims, error) {
 		return claims, nil
 	}
 	return nil, data.TokenInvalid
+}
+
+func (j *JWT) RefreshToken(tokenString string) (string, error) {
+	jwt.TimeFunc = func() time.Time {
+		return time.Unix(0, 0)
+	}
+	token, err := jwt.ParseWithClaims(tokenString, &data.CustomClaims{}, func(token *jwt.Token) (interface{}, error) {
+		return j.SigningKey, nil
+	})
+	if err != nil {
+		return "", err
+	}
+	if claims, ok := token.Claims.(*data.CustomClaims); ok && token.Valid {
+		jwt.TimeFunc = time.Now
+		claims.StandardClaims.ExpiresAt = time.Now().Add(1 * time.Hour).Unix()
+		return j.CreateToken(*claims)
+	}
+	return "", data.TokenInvalid
 }

@@ -24,7 +24,7 @@ func main() {
 
 	var logdir = flag.String("logdir", "", "The path to save glog")
 	flag.Lookup("log_dir").Value.Set(*logdir)
-	var port = flag.String("userport", ":8080", "the port to listen the platform")
+	_ = flag.String("userport", ":8080", "the port to listen the platform")
 
 	flag.Parse()
 	defer glog.Flush()
@@ -45,7 +45,7 @@ func main() {
 
 	// Login
 	router.POST("/login", controller.Login)
-	router.POST("/getuser_notoken", controller.GetUserInfo_NoToken)
+	router.GET("/getuser_notoken", controller.GetUserInfo_WithoutToken)
 	router.Static("/logs", flag.Lookup("log_dir").Value.String())
 
 	api := router.Group("/api")
@@ -58,7 +58,7 @@ func main() {
 		router.POST("/delete", controller.DeleteUser)
 
 		// Dir Opts
-		router.GET("/search_dir", controller.GetDirInfo)
+		router.POST("/search_dir", controller.GetDirInfo)
 		router.POST("/create_dir", controller.CreateDir)
 		router.POST("/delete_dir", controller.DeleteDir)
 
@@ -91,5 +91,5 @@ func main() {
 		router.GET("/getuser", controller.GetAllUsers)
 	}
 
-	router.Run(*port)
+	router.Run(flag.Lookup("userport").Value.String())
 }

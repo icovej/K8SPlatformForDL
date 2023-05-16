@@ -50,41 +50,36 @@ func Login(c *gin.Context) {
 	}
 }
 
-func GetUserInfo_NoToken(c *gin.Context) {
-	var user data.User
-	err := c.ShouldBindJSON(&user)
+func GetUserInfo_WithoutToken(c *gin.Context) {
+
+	j := tools.NewJWT()
+	tokenString := c.GetHeader("token")
+	if tokenString == "" {
+		c.JSON(http.StatusOK, gin.H{
+			"code":    data.SUCCESS,
+			"message": "Failed to get token, because the token is empty!",
+		})
+		glog.Error("Failed to get token, because the token is empty!")
+		return
+	}
+	token, err := j.ParseToken(tokenString)
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
-			"code":    data.OPERATION_FAILURE,
-			"message": fmt.Sprintf("Method GetUserInfo_NoToken gets invalid request payload, err is %v", err.Error()),
+			"code":    data.SUCCESS,
+			"message": fmt.Sprintf("Failed to parse token, the error is %v", err.Error()),
 		})
-		glog.Error("Method GetUserInfo_NoToken gets invalid request payload")
+		glog.Errorf("Failed to parse token, the error is %v", err.Error())
 		return
 	}
 
-	users, err := tools.LoadUsers(data.UserFile)
-	if err != nil {
-		c.JSON(http.StatusOK, gin.H{
-			"code":    data.OPERATION_FAILURE,
-			"message": err.Error(),
-		})
-		glog.Error("Failed to load saved users info")
-		return
-	}
-
-	for i := range users {
-		if user.Username == users[i].Username && user.Password == users[i].Password {
-			c.JSON(http.StatusOK, gin.H{
-				"code": data.SUCCESS,
-				"data": users[i],
-			})
-			return
-		}
+	user := data.User{
+		Username: token.Username,
+		Path:     token.Path,
+		Role:     token.Role,
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"code":    data.OPERATION_FAILURE,
-		"message": "Failed to get user info!",
+		"code": data.SUCCESS,
+		"data": user,
 	})
-	glog.Errorf("Failed to get user info without token!")
 }

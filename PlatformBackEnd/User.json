@@ -1,1 +1,1 @@
-[{"username":"David","password":"123456","role":"user","path":"/home/gpu-server/tmp/test"}]
+[{"username":"KKK","password":"123","role":"User","path":"/home/gpu-server/test"},{"username":"BBB","password":"123","role":"User","path":"/home/gpu-server/test/t"},{"username":"C","password":"123456","role":"user","path":"/home/gpu-server/a"},{"username":"D","password":"123456","role":"user","path":"/home/gpu-server/p"}]

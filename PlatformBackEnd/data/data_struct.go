@@ -163,7 +163,7 @@ type CustomClaims struct {
 	Username string `json:"username"`
 	Role     string `json:"role"`
 	Path     string `json:"path"`
-	jwt.RegisteredClaims
+	jwt.StandardClaims
 }
 
 type JWT struct {
@@ -179,8 +179,13 @@ type NodeIP struct {
 	Node   []string `json:"nodeip"`
 }
 
-type MyJSON struct {
+type DataJSON struct {
 	JSON1 interface{} `json:"json1"`
 	JSON2 interface{} `json:"json2"`
 	JSON3 interface{} `json:"json3"`
+}
+
+type FileData struct {
+	Dir  []string `json:"dir"`
+	File []string `json:"file"`
 }

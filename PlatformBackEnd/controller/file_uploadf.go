@@ -47,7 +47,7 @@ func UploadFile(c *gin.Context) {
 		glog.Error("Failed to get token, because the token is empty!")
 		return
 	}
-	token, err := j.Parse_Token(tokenString)
+	token, err := j.ParseToken(tokenString)
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"code":    data.SUCCESS,
