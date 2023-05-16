@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"path/filepath"
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang/glog"
@@ -36,7 +37,22 @@ func GetAllFiles(c *gin.Context) {
 
 	path = token.Path + "/" + path
 
-	files, err := os.ReadDir(path)
+	var file_result []string
+	var dir_result []string
+
+	err = filepath.Walk(path, func(path string, file os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+
+		if file.IsDir() {
+			dir_result = append(dir_result, file.Name())
+		} else {
+			file_result = append(file_result, file.Name())
+		}
+		return nil
+	})
+
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"code":    data.OPERATION_FAILURE,
@@ -44,17 +60,6 @@ func GetAllFiles(c *gin.Context) {
 		})
 		glog.Errorf("Failed to read path %v, the error is %v", path, err.Error())
 		return
-	}
-
-	var file_result []string
-	var dir_result []string
-
-	for _, file := range files {
-		if file.IsDir() {
-			dir_result = append(dir_result, file.Name())
-		} else {
-			file_result = append(file_result, file.Name())
-		}
 	}
 
 	result := data.FileData{
