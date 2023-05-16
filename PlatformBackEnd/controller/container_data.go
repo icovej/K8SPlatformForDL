@@ -2,6 +2,7 @@ package controller
 
 import (
 	"PlatformBackEnd/tools"
+	"net/http"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -9,13 +10,18 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-var upgrader = websocket.Upgrader{
-	ReadBufferSize:  1024,
-	WriteBufferSize: 1024,
-}
+// var upgrader = websocket.Upgrader{
+// 	ReadBufferSize:  1024,
+// 	WriteBufferSize: 1024,
+// }
 
 func GetContainerData(c *gin.Context) {
-	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
+	upGrader := websocket.Upgrader{
+		CheckOrigin: func(r *http.Request) bool {
+			return true
+		},
+	}
+	conn, err := upGrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
 		glog.Errorf("Failed to upgrade WebSocket: %v", err.Error())
 		return
@@ -27,4 +33,9 @@ func GetContainerData(c *gin.Context) {
 			time.Sleep(time.Second)
 		}
 	}(conn)
+	// log.Println("连接建立成功", conn.RemoteAddr())
+	// for {
+	// 	tools.GetContainerData(conn)
+	// 	time.Sleep(time.Second)
+	// }
 }

@@ -82,7 +82,7 @@ func main() {
 		}
 
 		// Get container data
-		router.POST("/ws", controller.GetContainerData)
+		router.GET("/ws", controller.GetContainerData)
 
 		// Load file
 		router.POST("/upload", controller.UploadFile)

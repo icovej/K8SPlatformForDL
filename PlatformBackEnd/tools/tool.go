@@ -6,7 +6,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"flag"
 	"fmt"
 	"hash/crc32"
 	"io"
@@ -14,7 +13,6 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"runtime"
 	"sort"
 	"strconv"
@@ -33,7 +31,6 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
-	"k8s.io/client-go/util/homedir"
 	"k8s.io/client-go/util/retry"
 	"k8s.io/cri-api/pkg/errors"
 	"k8s.io/metrics/pkg/client/clientset/versioned"
@@ -59,14 +56,14 @@ func initDocker() (*client.Client, error) {
 
 func getConfig() (*rest.Config, error) {
 	var kubeconfig *string
-	if home := homedir.HomeDir(); home != "" {
-		kubeconfig = flag.String("kubeconfig", filepath.Join(home, ".kube", "config"), "(optional) absolute path to the kubeconfig file")
-	} else {
-		kubeconfig = flag.String("kubeconfig", "", "absolute path to the kubeconfig file")
-	}
+	// if home := homedir.HomeDir(); home != "" {
+	// 	kubeconfig = flag.String("kubeconfig", filepath.Join(home, ".kube", "config"), "(optional) absolute path to the kubeconfig file")
+	// } else {
+	// 	kubeconfig = flag.String("kubeconfig", "", "absolute path to the kubeconfig file")
+	// }
 
-	// var p string = "/home/gpu-server/.kube/config"
-	// kubeconfig = &p
+	var p string = "/home/gpu-server/.kube/config"
+	kubeconfig = &p
 
 	// Use kubeconfig context to load config file
 	config, err_config := clientcmd.BuildConfigFromFlags("", *kubeconfig)
@@ -455,6 +452,9 @@ func Core() gin.HandlerFunc {
 		c.Header("Access-Control-Allow-Methods", "POST, GET, OPTIONS, DELETE, PATCH, PUT")
 		c.Header("Access-Control-Expose-Headers", "Content-Length,Access-Control-Allow-Origin,Access-Control-Allow-Headers,Content-Type")
 		c.Header("Access-Control-Allow-Credentials", "True")
+		c.Header("Connection", "Upgrade")
+		c.Header("Upgrade", "websockect")
+		c.Header("Sec-WebSocket-Extensions", "permessage-deflate")
 
 		if method == "OPTIONS" {
 			c.AbortWithStatus(http.StatusOK)
