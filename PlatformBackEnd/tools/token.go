@@ -76,15 +76,15 @@ func GenerateToken(c *gin.Context, user data.User) {
 		// 	ExpiresAt: &jwt.NumericDate{Time: time.Now().Add(data.TOKEN_MAX_EXPIRE_HOUR * time.Hour)},
 		// },
 		StandardClaims: jwt.StandardClaims{
-			NotBefore: int64(time.Now().Unix() - 1000), // 签名生效时间
-			ExpiresAt: int64(time.Now().Unix() + 3600), // 过期时间 一小时
-			Issuer:    data.SignKey,                    //签名的发行者
+			NotBefore: int64(time.Now().Unix() - 1000), // teh time sign to work
+			ExpiresAt: int64(time.Now().Unix() + 3600), // Expired time, an hour过期时间 一小时
+			Issuer:    data.SignKey,                    // Signer
 		},
 	}
 
 	token, err := j.CreateToken(claims)
 	if err != nil {
-		c.JSON(http.StatusMethodNotAllowed, gin.H{
+		c.JSON(http.StatusOK, gin.H{
 			"code":    data.OPERATION_FAILURE,
 			"message": fmt.Sprintf("Failed to create token, the error is %v", err.Error()),
 		})

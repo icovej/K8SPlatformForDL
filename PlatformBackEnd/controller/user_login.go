@@ -56,7 +56,7 @@ func GetUserInfo_WithoutToken(c *gin.Context) {
 	tokenString := c.GetHeader("token")
 	if tokenString == "" {
 		c.JSON(http.StatusOK, gin.H{
-			"code":    data.SUCCESS,
+			"code":    data.IDENTITY_FAILURE,
 			"message": "Failed to get token, because the token is empty!",
 		})
 		glog.Error("Failed to get token, because the token is empty!")
@@ -65,7 +65,7 @@ func GetUserInfo_WithoutToken(c *gin.Context) {
 	token, err := j.ParseToken(tokenString)
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
-			"code":    data.SUCCESS,
+			"code":    data.IDENTITY_FAILURE,
 			"message": fmt.Sprintf("Failed to parse token, the error is %v", err.Error()),
 		})
 		glog.Errorf("Failed to parse token, the error is %v", err.Error())

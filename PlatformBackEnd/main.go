@@ -77,8 +77,8 @@ func main() {
 		// Handle Dir
 		group := router.Group("/file")
 		{
-			group.GET("/list", controller.GetAllFiles)
-			group.DELETE("/delete", controller.DeleteFile)
+			group.POST("/list", controller.GetAllFiles)
+			group.POST("/delete", controller.DeleteFile)
 		}
 
 		// Get container data

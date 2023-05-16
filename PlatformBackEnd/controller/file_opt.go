@@ -13,7 +13,18 @@ import (
 )
 
 func GetAllFiles(c *gin.Context) {
-	path := c.PostForm("path")
+	var Path data.DirData
+	err := c.ShouldBindJSON(&Path)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{
+			"code":    data.API_PARAMETER_ERROR,
+			"message": fmt.Sprintf("Method GetAllFiles gets invalid request payload, err is %v", err.Error()),
+		})
+		glog.Errorf("Method GetAllFiles gets invalid request payload")
+		return
+	}
+
+	path := Path.Dir
 
 	j := tools.NewJWT()
 	tokenString := c.GetHeader("token")
@@ -36,6 +47,7 @@ func GetAllFiles(c *gin.Context) {
 	}
 
 	path = token.Path + "/" + path
+	glog.Info(path)
 
 	var file_result []string
 	var dir_result []string
@@ -74,7 +86,18 @@ func GetAllFiles(c *gin.Context) {
 }
 
 func DeleteFile(c *gin.Context) {
-	path := c.PostForm("path")
+	var Path data.DirData
+	err := c.ShouldBindJSON(&Path)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{
+			"code":    data.API_PARAMETER_ERROR,
+			"message": fmt.Sprintf("Method DeleteFile gets invalid request payload, err is %v", err.Error()),
+		})
+		glog.Errorf("Method DeleteFile gets invalid request payload")
+		return
+	}
+
+	path := Path.Dir
 
 	j := tools.NewJWT()
 	tokenString := c.GetHeader("token")
