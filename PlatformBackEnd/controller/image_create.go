@@ -23,6 +23,7 @@ func CreateImage(c *gin.Context) {
 		glog.Errorf("Method CreateImage gets invalid request payload")
 		return
 	}
+	glog.Info("Succeed to get request to create image")
 
 	// Create user's dockerfile
 	dstFilepath := image_data.Dstpath
@@ -64,8 +65,6 @@ func CreateImage(c *gin.Context) {
 
 	// Import images used in user's pod
 	// And write into dockerfile whoes path is user's working path
-	// TODO
-	// 用户直接写语句然后append
 	imageArray := image_data.Imagearray
 	for i := range imageArray {
 		err = tools.WriteAtTail(dstFilepath, imageArray[i], 1)
@@ -96,4 +95,5 @@ func CreateImage(c *gin.Context) {
 		"code: ":    data.SUCCESS,
 		"message: ": fmt.Sprintf("Succeed to build image: %v", imageName),
 	})
+	glog.Infof("Succeed to build image: %v", imageName)
 }

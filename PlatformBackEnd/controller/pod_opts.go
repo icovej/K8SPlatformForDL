@@ -28,6 +28,7 @@ func CreatePod(c *gin.Context) {
 		glog.Error("Method CreatePod gets invalid request payload, the error is %v", err.Error())
 		return
 	}
+	glog.Infof("Succeed to get request to create pod %v", pod.Podname)
 
 	// Get avaliable Mem, CPU and PU
 	var avaGPU uint64
@@ -209,4 +210,5 @@ func CreatePod(c *gin.Context) {
 		"code":    data.SUCCESS,
 		"message": fmt.Sprintf("Succeed to create pod, its name is %v", pod_container.GetObjectMeta().GetName()),
 	})
+	glog.Infof("Succeed to create pod %v", pod.Podname)
 }

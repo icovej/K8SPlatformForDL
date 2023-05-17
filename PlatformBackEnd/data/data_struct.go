@@ -135,7 +135,7 @@ type Reader struct {
 // Events data structure
 //
 // Just like tensorboard, we need logs' path to read data
-type EVData struct {
+type ModelLogData struct {
 	Logdir string `json:"logdir"`
 }
 

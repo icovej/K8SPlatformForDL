@@ -23,6 +23,7 @@ func GetAllFiles(c *gin.Context) {
 		glog.Errorf("Method GetAllFiles gets invalid request payload")
 		return
 	}
+	glog.Info("Succeed to get request to get path %v all files", Path.Dir)
 
 	path := Path.Dir
 
@@ -47,7 +48,7 @@ func GetAllFiles(c *gin.Context) {
 	}
 
 	path = token.Path + "/" + path
-	glog.Info(path)
+	glog.Infof("path is %v", path)
 
 	var file_result []string
 	var dir_result []string
@@ -83,6 +84,7 @@ func GetAllFiles(c *gin.Context) {
 		"code": data.SUCCESS,
 		"data": result,
 	})
+	glog.Info("Succeed to get all files")
 }
 
 func DeleteFile(c *gin.Context) {
@@ -96,14 +98,13 @@ func DeleteFile(c *gin.Context) {
 		glog.Errorf("Method DeleteFile gets invalid request payload")
 		return
 	}
-
-	path := Path.Dir
+	glog.Info("Succeed to get request to delete file %v", Path.Dir)
 
 	j := tools.NewJWT()
 	tokenString := c.GetHeader("token")
 	if tokenString == "" {
 		c.JSON(http.StatusOK, gin.H{
-			"code":    data.SUCCESS,
+			"code":    data.IDENTITY_FAILURE,
 			"message": "Failed to get token, because the token is empty!",
 		})
 		glog.Error("Failed to get token, because the token is empty!")
@@ -112,50 +113,31 @@ func DeleteFile(c *gin.Context) {
 	token, err := j.ParseToken(tokenString)
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
-			"code":    data.SUCCESS,
+			"code":    data.OPERATION_FAILURE,
 			"message": fmt.Sprintf("Failed to parse token, the error is %v", err.Error()),
 		})
 		glog.Errorf("Failed to parse token, the error is %v", err.Error())
 		return
 	}
 
-	path = token.Path + "/" + path
+	path := token.Path + "/" + Path.Dir
+	glog.Infof("path is %v", path)
 
-	fi, err := os.Stat(path)
+	err = tools.DeleteFile_Dir(path)
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"code":    data.OPERATION_FAILURE,
-			"message": fmt.Sprintf("Failed to stat file/dir %v, the error is %v", path, err.Error()),
+			"message": fmt.Sprintf("Failed to delete target %v, the error is %v", path, err.Error()),
 		})
-		glog.Errorf("Failed to stat file/dir %v, the error is %v", path, err.Error())
+		glog.Errorf("Failed to delete target %v, the error is %v", path, err.Error())
 		return
-	}
-	if fi.IsDir() {
-		err = os.RemoveAll(path)
-		if err != nil {
-			c.JSON(http.StatusOK, gin.H{
-				"code":    data.OPERATION_FAILURE,
-				"message": fmt.Sprintf("Failed to remove dir %v, the error is %v", path, err.Error()),
-			})
-			glog.Errorf("Failed to remove dir %v, the error is %v", path, err.Error())
-			return
-		}
-	} else {
-		err = os.Remove(path)
-		if err != nil {
-			c.JSON(http.StatusOK, gin.H{
-				"code":    data.OPERATION_FAILURE,
-				"message": fmt.Sprintf("Failed to remove file %v, the error is %v", path, err.Error()),
-			})
-			glog.Errorf("Failed to remove file %v, the error is %v", path, err.Error())
-			return
-		}
 	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"code":    data.SUCCESS,
 		"message": fmt.Sprintf("Succeed to delete file %v", path),
 	})
+	glog.Info("Succeed to delete file %v", Path.Dir)
 }
 
 func CreateDir(c *gin.Context) {
@@ -169,6 +151,7 @@ func CreateDir(c *gin.Context) {
 		glog.Error("Method CreateDir gets invalid request payload")
 		return
 	}
+	glog.Info("Succeed to get request to create dir %v", Dir.Dir)
 
 	j := tools.NewJWT()
 	tokenString := c.GetHeader("token")
@@ -204,4 +187,5 @@ func CreateDir(c *gin.Context) {
 		"code":    data.SUCCESS,
 		"message": fmt.Sprintf("Succeed to create dir %v", Dir.Dir),
 	})
+	glog.Info("Succeed to create dir %v", Dir.Dir)
 }

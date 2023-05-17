@@ -22,6 +22,7 @@ func UploadFile(c *gin.Context) {
 		glog.Errorf("Method UploadFile gets invalid request payload, the error is %v", err.Error())
 		return
 	}
+	glog.Info("Succeed to get request to upload a file %v", file.Filename)
 
 	path := c.PostForm("path")
 
@@ -87,4 +88,5 @@ func UploadFile(c *gin.Context) {
 		"code":    data.SUCCESS,
 		"message": fmt.Sprintf("Succeed to upload file, file name is %v", file.Filename),
 	})
+	glog.Infof("Succeed to upload file, file name is %v", file.Filename)
 }

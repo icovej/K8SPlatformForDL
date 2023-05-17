@@ -13,7 +13,7 @@ First, git clone this repository on your master node.
 Then:
 
 ```shell
-cd platform_back_end
+cd Platform_back_end
 sudo go run main.go -log_dir="${glog path which you want to save glog}"
 ```
 

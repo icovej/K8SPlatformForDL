@@ -23,6 +23,7 @@ func GetDirInfo(c *gin.Context) {
 		glog.Error("Method GetDirInfo gets invalid request payload")
 		return
 	}
+	glog.Info("Succeed to get request to get dir %v info", Dir.Dir)
 
 	j := tools.NewJWT()
 	tokenString := c.GetHeader("token")
@@ -45,6 +46,7 @@ func GetDirInfo(c *gin.Context) {
 	}
 
 	path := token.Path + "/" + Dir.Dir
+	glog.Infof("path is %v", path)
 
 	output, err := tools.ExecCommand("du", "-h", path, "--max-depth", Dir.Depth)
 	if err != nil {
@@ -70,6 +72,7 @@ func GetDirInfo(c *gin.Context) {
 		"message": fmt.Sprintf("Succeed to get dir %v info", path),
 		"data":    result,
 	})
+	glog.Infof("Succeed to get dir %v info", path)
 }
 
 func DeleteDir(c *gin.Context) {
@@ -83,6 +86,7 @@ func DeleteDir(c *gin.Context) {
 		glog.Error("Method DeleteDir gets invalid request payload")
 		return
 	}
+	glog.Info("Succeed to get request to delete dir %v", Dir.Dir)
 
 	j := tools.NewJWT()
 	tokenString := c.GetHeader("token")
@@ -105,6 +109,7 @@ func DeleteDir(c *gin.Context) {
 	}
 
 	path := token.Path + "/" + Dir.Dir
+	glog.Infof("path is %v", path)
 
 	_, err = tools.ExecCommand("rm", "-rf", path)
 	if err != nil {
@@ -120,4 +125,5 @@ func DeleteDir(c *gin.Context) {
 		"code":    data.SUCCESS,
 		"message": fmt.Sprintf("Succeed to delete dir %v", Dir.Dir),
 	})
+	glog.Infof("Succeed to delete dir %v", path)
 }

@@ -45,7 +45,7 @@ func main() {
 
 	// Login
 	router.POST("/login", controller.Login)
-	router.GET("/getuser_notoken", controller.GetUserInfo_WithoutToken)
+	router.GET("/getuser_notoken", controller.GetUserInfo_NoToken)
 	router.Static("/logs", flag.Lookup("log_dir").Value.String())
 
 	api := router.Group("/api")
@@ -69,10 +69,11 @@ func main() {
 		router.POST("/pod", controller.CreatePod)
 
 		// Get data of model training
-		router.POST("/data", controller.GetData)
+		router.POST("/data", controller.GetModelLogData)
+		router.POST("/delete_data", controller.DeleteModelLogData)
 
 		// Monite Pod
-		router.POST("/monitor", controller.MonitorPod)
+		router.POST("/monitor", controller.MonitorK8SResource)
 
 		// Handle Dir
 		group := router.Group("/file")

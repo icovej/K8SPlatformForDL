@@ -23,6 +23,7 @@ func DeleteUser(c *gin.Context) {
 		glog.Error("Method DeleteUser gets invalid request payload")
 		return
 	}
+	glog.Info("Succeed to get request to delete user %v", user.Username)
 
 	users, err := tools.LoadUsers(data.UserFile)
 	if err != nil {
@@ -33,6 +34,7 @@ func DeleteUser(c *gin.Context) {
 		glog.Errorf("Failed to load saved users info, the error is %v", err.Error())
 		return
 	}
+	glog.Info("Succeed to read user file")
 
 	for i, u := range users {
 		if u.Username == user.Username {
@@ -65,4 +67,5 @@ func DeleteUser(c *gin.Context) {
 		"code":    data.SUCCESS,
 		"message": fmt.Sprintf("Succeed to delete user, user.name = %v", user.Username),
 	})
+	glog.Info("Succeed to delete user %v", user.Username)
 }

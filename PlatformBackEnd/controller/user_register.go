@@ -22,6 +22,8 @@ func RegisterHandler(c *gin.Context) {
 		return
 	}
 
+	glog.Infof("Succeed to get request to regite user %v", user.Username)
+
 	// Check if the account has existed
 	users, err := tools.CheckUsers()
 	if err != nil {
@@ -36,25 +38,25 @@ func RegisterHandler(c *gin.Context) {
 		if u.Username == user.Username {
 			c.JSON(http.StatusOK, gin.H{
 				"code":    data.OPERATION_FAILURE,
-				"message": "Username already exists",
+				"message": "Failed to registe account, the error is username has already existed",
 			})
-			glog.Error("Username already exists!")
+			glog.Error("Failed to registe account, the error is username has already existed")
 			return
 		}
 		if u.Path == user.Path {
 			c.JSON(http.StatusOK, gin.H{
 				"code":    data.OPERATION_FAILURE,
-				"message": "This path has already been used",
+				"message": "Failed to registe account, the error is this path has already been used",
 			})
-			glog.Error("This path has already been used")
+			glog.Error("Failed to registe account, the error is this path has already been used")
 			return
 		}
 		if u.Role == "admin" && user.Role == "admin" {
 			c.JSON(http.StatusOK, gin.H{
 				"code":    data.OPERATION_FAILURE,
-				"message": "One cluster can have only one admin",
+				"message": "Failed to registe account, the error is that one cluster can have only one admin",
 			})
-			glog.Error("One cluster can have only one admin")
+			glog.Error("Failed to registe account, the error is that one cluster can have only one admin")
 			return
 		}
 	}
@@ -63,23 +65,11 @@ func RegisterHandler(c *gin.Context) {
 		if user.Path == "" {
 			c.JSON(http.StatusOK, gin.H{
 				"code":    data.OPERATION_FAILURE,
-				"message": "User's path is nil!",
+				"message": "Failed to registe account, the error is user's path is nil!",
 			})
-			glog.Error("User's path is nil!")
+			glog.Error("Failed to registe account, the error is user's path is nil!")
 			return
 		}
-	}
-
-	// add new user info to file
-	users = append(users, user)
-	err = tools.WriteUsers(users)
-	if err != nil {
-		c.JSON(http.StatusOK, gin.H{
-			"code":    data.OPERATION_FAILURE,
-			"message": fmt.Sprintf("Failed to write users file, the error is %v", err.Error()),
-		})
-		glog.Errorf("Failed to write users file, the error is %v", err.Error())
-		return
 	}
 
 	// create user's path
@@ -126,8 +116,23 @@ func RegisterHandler(c *gin.Context) {
 		return
 	}
 
+	glog.Infof("Succeed to create user's work path %v", user.Path)
+
+	// add new user info to file
+	users = append(users, user)
+	err = tools.WriteUsers(users)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{
+			"code":    data.OPERATION_FAILURE,
+			"message": fmt.Sprintf("Failed to write users file, the error is %v", err.Error()),
+		})
+		glog.Errorf("Failed to write users file, the error is %v", err.Error())
+		return
+	}
+
 	c.JSON(http.StatusOK, gin.H{
 		"code":    data.SUCCESS,
 		"message": fmt.Sprintf("Succeed to registe user, user.name = %v", user.Username),
 	})
+	glog.Infof("Succeed to add new user info to local user file, user name is %v, path is %v, role is %v", user.Username, user.Path, user.Role)
 }

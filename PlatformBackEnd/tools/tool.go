@@ -313,8 +313,8 @@ func WriteAtTail(filepath string, image string, flag int) error {
 	var s string
 	if flag == 0 {
 		s = "\n" + "RUN apt-get install -y " + image + "\n"
-	} else if flag == 1 {
-		s = "\n" + "RUN pip install " + image + "\n"
+	} else if flag != 0 {
+		s = "\n" + image + "\n"
 	}
 
 	_, err = file.WriteString(s)
@@ -654,4 +654,40 @@ func TxtToJson(filepath string) string {
 	}
 
 	return string(jsonBytes)
+}
+
+func DeleteFile_Dir(path string) error {
+	fi, err := os.Stat(path)
+	if err != nil {
+		glog.Errorf("Failed to stat file/dir %v, the error is %v", path, err.Error())
+		return err
+	}
+	if fi.IsDir() {
+		err = os.RemoveAll(path)
+		if err != nil {
+			glog.Errorf("Failed to remove dir %v, the error is %v", path, err.Error())
+			return err
+		}
+	} else {
+		err = os.Remove(path)
+		if err != nil {
+			glog.Errorf("Failed to remove file %v, the error is %v", path, err.Error())
+			return err
+		}
+	}
+	return nil
+}
+
+func CreateUserPath(basepath string) error {
+	var path []string
+	path[0] = basepath + "/log"
+	path[1] = basepath + "/data"
+	path[2] = basepath + "/code"
+	for i := range path {
+		err := CreatePath(path[i], 0777)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }

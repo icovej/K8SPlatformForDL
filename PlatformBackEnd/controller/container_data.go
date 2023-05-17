@@ -27,6 +27,8 @@ func GetContainerData(c *gin.Context) {
 		return
 	}
 
+	glog.Info("Succeed to build websocket, %v", conn.RemoteAddr())
+
 	go func(conn *websocket.Conn) {
 		for {
 			tools.GetContainerData(conn)

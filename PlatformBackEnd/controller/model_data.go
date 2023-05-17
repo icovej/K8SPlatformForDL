@@ -73,17 +73,18 @@ func (r *Reader) Next() (*util.Event, error) {
 	return ev, ev.Unmarshal(payload[0:length])
 }
 
-func GetData(c *gin.Context) {
-	var evdata data.EVData
-	err := c.ShouldBindJSON(&evdata)
+func GetModelLogData(c *gin.Context) {
+	var modelog data.ModelLogData
+	err := c.ShouldBindJSON(&modelog)
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"code":    data.API_PARAMETER_ERROR,
-			"message": fmt.Sprintf("Method GetData gets invalid request payload, err is %v", err.Error()),
+			"message": fmt.Sprintf("Method GetModelLogData gets invalid request payload, err is %v", err.Error()),
 		})
-		glog.Errorf("Method GetData gets invalid request payload, the error is %v", err.Error())
+		glog.Errorf("Method GetModelLogData gets invalid request payload, the error is %v", err.Error())
 		return
 	}
+	glog.Info("Succeed to get request to get model data")
 
 	j := tools.NewJWT()
 	tokenString := c.GetHeader("token")
@@ -105,7 +106,8 @@ func GetData(c *gin.Context) {
 		return
 	}
 
-	logdir := token.Path + "/log/" + evdata.Logdir
+	logdir := token.Path + "/log/" + modelog.Logdir
+	glog.Infof("Model log dir is %v", logdir)
 
 	f, err := os.Open(logdir)
 	if err != nil {
@@ -133,7 +135,7 @@ func GetData(c *gin.Context) {
 		events = append(events, ev)
 	}
 
-	fullpath := token.Path + "/" + "model_data/" + evdata.Logdir + "/"
+	fullpath := token.Path + "/" + "model_data/" + modelog.Logdir + "/"
 	err = tools.CreatePath(fullpath, 0777)
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
@@ -211,4 +213,70 @@ func GetData(c *gin.Context) {
 		"code": data.SUCCESS,
 		"data": data_jSON,
 	})
+	glog.Info("Succeed to draw data picture")
+}
+
+func DeleteModelLogData(c *gin.Context) {
+	var modelog data.ModelLogData
+	err := c.ShouldBindJSON(&modelog)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{
+			"code":    data.API_PARAMETER_ERROR,
+			"message": fmt.Sprintf("Method DeleteModelLogData gets invalid request payload, err is %v", err.Error()),
+		})
+		glog.Errorf("Method DeleteModelLogData gets invalid request payload, the error is %v", err.Error())
+		return
+	}
+	glog.Info("Succeed to get request to delete model data")
+
+	j := tools.NewJWT()
+	tokenString := c.GetHeader("token")
+	if tokenString == "" {
+		c.JSON(http.StatusOK, gin.H{
+			"code":    data.IDENTITY_FAILURE,
+			"message": "Failed to get token, because the token is empty!",
+		})
+		glog.Error("Failed to get token, because the token is empty!")
+		return
+	}
+	token, err := j.ParseToken(tokenString)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{
+			"code":    data.OPERATION_FAILURE,
+			"message": fmt.Sprintf("Failed to parse token, the error is %v", err.Error()),
+		})
+		glog.Errorf("Failed to parse token, the error is %v", err.Error())
+		return
+	}
+
+	path := token.Path + "/log/" + modelog.Logdir
+	glog.Infof("path is %v", path)
+
+	err = tools.DeleteFile_Dir(path)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{
+			"code":    data.OPERATION_FAILURE,
+			"message": fmt.Sprintf("Failed to delete log, the error is %v", err.Error()),
+		})
+		glog.Errorf("Failed to delete log, the error is %v", err.Error())
+		return
+	}
+
+	path = token.Path + "/model_data/" + modelog.Logdir
+	glog.Infof("path is %v", path)
+	err = tools.DeleteFile_Dir(path)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{
+			"code":    data.OPERATION_FAILURE,
+			"message": fmt.Sprintf("Failed to delete log data(txt), the error is %v", err.Error()),
+		})
+		glog.Errorf("Failed to delete log data(txt), the error is %v", err.Error())
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"code":    data.SUCCESS,
+		"message": "Succeed to delete all files and dirs about model log",
+	})
+	glog.Info("Succeed to delete all files and dirs about model log")
 }

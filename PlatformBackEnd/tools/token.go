@@ -91,6 +91,7 @@ func GenerateToken(c *gin.Context, user data.User) {
 		glog.Errorf("Failed to create token, the error is %v", err.Error())
 		return
 	}
+	glog.Info("Succeed to create token")
 
 	token_data := data.LoginResult{
 		User:  user,
@@ -110,6 +111,7 @@ func GenerateToken(c *gin.Context, user data.User) {
 		"message": "Succeed to login",
 		"data":    token_data,
 	})
+	glog.Info("Succeed to login")
 }
 
 func GetDataByTime(c *gin.Context) {
