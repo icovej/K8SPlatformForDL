@@ -43,7 +43,7 @@ func main() {
 	// Get API information
 	router.GET("/operation", controller.OperationInfo)
 
-	// Login
+	// Admin Opts
 	router.POST("/login", controller.Login)
 	router.GET("/getuser_notoken", controller.GetUserInfo_NoToken)
 	router.POST("/modify_user", controller.ModifyUser)
@@ -52,11 +52,10 @@ func main() {
 	api := router.Group("/api")
 	api.Use(tools.JWTAuth())
 	{
-		// Registe
-		router.POST("/register", controller.RegisterHandler)
-
-		// Delete
-		router.POST("/delete", controller.DeleteUser)
+		// User Opts
+		router.POST("/registe_user", controller.RegisterUser)
+		router.POST("/delete_user", controller.DeleteUser)
+		router.GET("/get_alluser", controller.GetAllUsers)
 
 		// Dir Opts
 		router.POST("/search_dir", controller.GetDirInfo)
@@ -66,15 +65,16 @@ func main() {
 		// Create Image
 		router.POST("/image", controller.CreateImage)
 
-		// Create Pod
-		router.POST("/pod", controller.CreatePod)
+		// Pod Opts
+		router.POST("/create_pod", controller.CreatePod)
+		router.POST("/delete_pod", controller.DeletePod)
+		router.POST("/get_pod", controller.GetK8SPod)
+		router.GET("/get_namespace", controller.GetK8SNamespace)
+		router.GET("/ws", controller.GetContainerData)
 
-		// Get data of model training
-		router.POST("/data", controller.GetModelLogData)
+		// Data of model training Opts
+		router.POST("/create_data", controller.GetModelLogData)
 		router.POST("/delete_data", controller.DeleteModelLogData)
-
-		// Monite Pod
-		router.POST("/monitor", controller.MonitorK8SResource)
 
 		// Handle Dir
 		group := router.Group("/file")
@@ -83,14 +83,9 @@ func main() {
 			group.POST("/delete", controller.DeleteFile)
 		}
 
-		// Get container data
-		router.GET("/ws", controller.GetContainerData)
-
 		// Load file
 		router.POST("/upload", controller.UploadFile)
 
-		// Get all user
-		router.GET("/getuser", controller.GetAllUsers)
 	}
 
 	router.Run(flag.Lookup("userport").Value.String())

@@ -23,7 +23,7 @@ func DeleteUser(c *gin.Context) {
 		glog.Error("Method DeleteUser gets invalid request payload")
 		return
 	}
-	glog.Info("Succeed to get request to delete user %v", user.Username)
+	glog.Infof("Succeed to get request to delete user %v", user.Username)
 
 	users, err := tools.LoadUsers(data.UserFile)
 	if err != nil {

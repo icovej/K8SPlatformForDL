@@ -110,17 +110,33 @@ func initMetricClient() (*versioned.Clientset, error) {
 }
 
 func CreatePod(poddata data.PodData, pod *v1.Pod) (*v1.Pod, error) {
-	clientset, err := initK8S()
+	client, err := initK8S()
 	if err != nil {
 		glog.Errorf("Failed to start k8s, the error is %v", err.Error())
 		return nil, err
 	}
-	pod_container, err := clientset.CoreV1().Pods(poddata.Namespace).Create(context.Background(), pod, metav1.CreateOptions{})
+	pod_container, err := client.CoreV1().Pods(poddata.Namespace).Create(context.Background(), pod, metav1.CreateOptions{})
 	if err != nil {
 		glog.Errorf("Failed to create pod, the error is %v", err.Error())
 		return nil, err
 	}
 	return pod_container, nil
+}
+
+func DeletePod(poddata data.PodData) error {
+	client, err := initK8S()
+	if err != nil {
+		glog.Errorf("Failed to start k8s, the error is %v", err.Error())
+		return err
+	}
+
+	err = client.CoreV1().Pods(poddata.Namespace).Delete(context.Background(), poddata.Podname, metav1.DeleteOptions{})
+	if err != nil {
+		glog.Errorf("Failed to delete pod %v", poddata.Podname)
+		return err
+	}
+
+	return nil
 }
 
 func GetAllNamespace() ([]string, error) {
@@ -244,8 +260,6 @@ func GetAvailableMemoryAndGPU() (uint64, int, map[int]uint64, error) {
 		// Get free num, the unit is bytes
 		avaMem := *deviceStatus.Memory.Global.Free
 		m[int(i)] = avaMem
-
-		glog.Info("GPU %v, the avaMem is %v", i, avaMem)
 	}
 
 	return memAva, cpuCore, m, nil

@@ -175,18 +175,21 @@ func CreatePod(c *gin.Context) {
 					VolumeMounts: []corev1.VolumeMount{
 						{
 							Name:      pod.Mountname,
-							MountPath: pod.Mountpath,
+							MountPath: "/data",
 						},
 					},
 				},
 			},
-			NodeName: pod.Nodename,
+			NodeSelector: map[string]string{
+				"node-role": "master",
+			},
 			Volumes: []corev1.Volume{
 				{
 					Name: pod.Mountname,
 					VolumeSource: corev1.VolumeSource{
 						HostPath: &corev1.HostPathVolumeSource{
 							Path: pod.Mountpath,
+							Type: (*corev1.HostPathType)(newHostPathType(corev1.HostPathDirectory)),
 						},
 					},
 				},
@@ -194,7 +197,6 @@ func CreatePod(c *gin.Context) {
 		},
 	}
 
-	// create pod
 	// create pod
 	pod_container, err := tools.CreatePod(pod, newPod)
 	if err != nil {
@@ -211,4 +213,38 @@ func CreatePod(c *gin.Context) {
 		"message": fmt.Sprintf("Succeed to create pod, its name is %v", pod_container.GetObjectMeta().GetName()),
 	})
 	glog.Infof("Succeed to create pod %v", pod.Podname)
+}
+
+func DeletePod(c *gin.Context) {
+	var pod data.PodData
+	err := c.ShouldBindJSON(&pod)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{
+			"code":    data.API_PARAMETER_ERROR,
+			"message": fmt.Sprintf("Method DeletePod gets invalid request payload, err is %v", err.Error()),
+		})
+		glog.Error("Method DeletePod gets invalid request payload, the error is %v", err.Error())
+		return
+	}
+	glog.Infof("Succeed to get request to delete pod %v", pod.Podname)
+
+	err = tools.DeletePod(pod)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{
+			"code":    data.OPERATION_FAILURE,
+			"message": fmt.Sprintf("Failed to delete pod %v", pod.Podname),
+		})
+		glog.Error("Failed to delete pod %v", pod.Podname)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"code":    data.SUCCESS,
+		"message": fmt.Sprintf("Succeed to delete pod %v", pod.Podname),
+	})
+	glog.Infof("Succeed to delete pod %v", pod.Podname)
+}
+
+func newHostPathType(t corev1.HostPathType) *corev1.HostPathType {
+	return &t
 }

@@ -10,7 +10,7 @@ import (
 	"github.com/golang/glog"
 )
 
-func MonitorK8SResource(c *gin.Context) {
+func GetK8SPod(c *gin.Context) {
 	var mpod data.Monitor
 	err := c.ShouldBindJSON(&mpod)
 	if err != nil {
@@ -33,6 +33,15 @@ func MonitorK8SResource(c *gin.Context) {
 		return
 	}
 
+	c.JSON(http.StatusOK, gin.H{
+		"code":    data.SUCCESS,
+		"message": "Succeed to get pod info",
+		"data":    podList,
+	})
+	glog.Info("Succeed to get cluster pods info")
+}
+
+func GetK8SNamespace(c *gin.Context) {
 	nsList, err := tools.GetAllNamespace()
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
@@ -44,10 +53,9 @@ func MonitorK8SResource(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"code":       data.SUCCESS,
-		"message":    "Succeed to get pod and namespace info",
-		"pods":       podList,
-		"namespaces": nsList,
+		"code":    data.SUCCESS,
+		"message": "Succeed to get namespace info",
+		"data":    nsList,
 	})
-	glog.Info("Succeed to getcluster resource info")
+	glog.Info("Succeed to get cluster all namespace")
 }

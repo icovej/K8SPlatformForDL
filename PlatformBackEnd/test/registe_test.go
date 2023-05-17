@@ -24,7 +24,7 @@ func TestRegister(t *testing.T) {
 
 	router := gin.New()
 
-	router.POST("/register", controller.RegisterHandler)
+	router.POST("/register", controller.RegisterUser)
 
 	// The first test example to registe a new account with Role=admin
 	// Test "Succeed to registe"

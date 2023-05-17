@@ -10,15 +10,15 @@ import (
 	"github.com/golang/glog"
 )
 
-func RegisterHandler(c *gin.Context) {
+func RegisterUser(c *gin.Context) {
 	var user data.User
 	err := c.ShouldBindJSON(&user)
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"code":    data.OPERATION_FAILURE,
-			"message": fmt.Sprintf("Method RegisterHandler gets invalid request payload, err is %v", err.Error()),
+			"message": fmt.Sprintf("Method RegisterUser gets invalid request payload, err is %v", err.Error()),
 		})
-		glog.Errorf("Method RegisterHandler gets invalid request payload, the error is %v", err.Error())
+		glog.Errorf("Method RegisterUser gets invalid request payload, the error is %v", err.Error())
 		return
 	}
 
