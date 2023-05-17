@@ -68,7 +68,8 @@ func main() {
 		// Pod Opts
 		router.POST("/create_pod", controller.CreatePod)
 		router.POST("/delete_pod", controller.DeletePod)
-		router.POST("/monite_k8s", controller.MonitorK8SResource)
+		router.POST("/get_pod", controller.GetK8SPod)
+		router.GET("/get_namespace", controller.GetK8SNamespace)
 		router.GET("/ws", controller.GetContainerData)
 
 		// Data of model training Opts

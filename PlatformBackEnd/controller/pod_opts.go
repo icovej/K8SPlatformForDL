@@ -175,18 +175,21 @@ func CreatePod(c *gin.Context) {
 					VolumeMounts: []corev1.VolumeMount{
 						{
 							Name:      pod.Mountname,
-							MountPath: pod.Mountpath,
+							MountPath: "/data",
 						},
 					},
 				},
 			},
-			NodeName: pod.Nodename,
+			NodeSelector: map[string]string{
+				"node-role": "master",
+			},
 			Volumes: []corev1.Volume{
 				{
 					Name: pod.Mountname,
 					VolumeSource: corev1.VolumeSource{
 						HostPath: &corev1.HostPathVolumeSource{
 							Path: pod.Mountpath,
+							Type: (*corev1.HostPathType)(newHostPathType(corev1.HostPathDirectory)),
 						},
 					},
 				},
@@ -240,4 +243,8 @@ func DeletePod(c *gin.Context) {
 		"message": fmt.Sprintf("Succeed to delete pod %v", pod.Podname),
 	})
 	glog.Infof("Succeed to delete pod %v", pod.Podname)
+}
+
+func newHostPathType(t corev1.HostPathType) *corev1.HostPathType {
+	return &t
 }

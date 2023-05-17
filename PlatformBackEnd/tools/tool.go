@@ -260,8 +260,6 @@ func GetAvailableMemoryAndGPU() (uint64, int, map[int]uint64, error) {
 		// Get free num, the unit is bytes
 		avaMem := *deviceStatus.Memory.Global.Free
 		m[int(i)] = avaMem
-
-		glog.Info("GPU %v, the avaMem is %v", i, avaMem)
 	}
 
 	return memAva, cpuCore, m, nil
