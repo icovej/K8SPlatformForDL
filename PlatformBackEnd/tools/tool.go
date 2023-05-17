@@ -348,6 +348,7 @@ func CreatePath(dirpath string, perm os.FileMode) error {
 	}
 
 	err_mk := os.MkdirAll(dirpath, perm)
+
 	if err_mk != nil {
 		glog.Errorf("Failed to create user path %v, the error is %v", dirpath, err_mk)
 		return err_mk
@@ -680,10 +681,12 @@ func DeleteFile_Dir(path string) error {
 
 func CreateUserPath(basepath string) error {
 	var path []string
-	path[0] = basepath + "/log"
-	path[1] = basepath + "/data"
-	path[2] = basepath + "/code"
+	path = append(path, basepath)
+	path = append(path, basepath+"/log")
+	path = append(path, basepath+"/data")
+	path = append(path, basepath+"/code")
 	for i := range path {
+		glog.Infof("path is %v", path[i])
 		err := CreatePath(path[i], 0777)
 		if err != nil {
 			return err

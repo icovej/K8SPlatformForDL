@@ -73,7 +73,7 @@ func ModifyUser(c *gin.Context) {
 		if user.Username == users[i].Username {
 			glog.Info("Succed to match login's info with local user info, start to gernerate token")
 
-			users[i].Username = user.Username
+			old_path := users[i].Path
 			users[i].Path = user.Path
 
 			err = tools.CreateUserPath(users[i].Path)
@@ -85,7 +85,7 @@ func ModifyUser(c *gin.Context) {
 				glog.Errorf("Failed to create user's new path %v, the error is %v", users[i].Path, err.Error())
 			}
 
-			err = tools.DeleteFile_Dir(users[i].Path)
+			err = tools.DeleteFile_Dir(old_path)
 			if err != nil {
 				c.JSON(http.StatusOK, gin.H{
 					"code":    data.OPERATION_FAILURE,
@@ -112,6 +112,6 @@ func ModifyUser(c *gin.Context) {
 		"code":    data.SUCCESS,
 		"message": fmt.Sprintf("Succeed to update user file, user.name = %v", user.Username),
 	})
-	glog.Infof("Succeed to update user file, user name is %v, path is %v, role is %v", user.Username, user.Path, user.Role)
+	glog.Infof("Succeed to update user file, user name is %v, path is %v", user.Username, user.Path)
 
 }

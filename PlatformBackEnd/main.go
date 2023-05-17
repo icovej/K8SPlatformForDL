@@ -46,6 +46,7 @@ func main() {
 	// Login
 	router.POST("/login", controller.Login)
 	router.GET("/getuser_notoken", controller.GetUserInfo_NoToken)
+	router.POST("/modify_user", controller.ModifyUser)
 	router.Static("/logs", flag.Lookup("log_dir").Value.String())
 
 	api := router.Group("/api")

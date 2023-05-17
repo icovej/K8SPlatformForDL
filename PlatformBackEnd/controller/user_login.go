@@ -50,8 +50,9 @@ func Login(c *gin.Context) {
 			"code":    data.OPERATION_FAILURE,
 			"message": "Invalid credentials",
 		})
+		glog.Info("Failed to login, the error is Invalid credentials")
 	}
-	glog.Info("Failed to login, the error is Invalid credentials")
+
 }
 
 func GetUserInfo_NoToken(c *gin.Context) {
