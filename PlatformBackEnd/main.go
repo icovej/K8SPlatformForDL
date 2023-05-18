@@ -5,17 +5,19 @@ import (
 	"PlatformBackEnd/data"
 	"PlatformBackEnd/tools"
 	"flag"
+	"net/http"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang/glog"
+	socketio "github.com/googollee/go-socket.io"
+	"github.com/googollee/go-socket.io/engineio"
+	"github.com/googollee/go-socket.io/engineio/transport"
+	"github.com/googollee/go-socket.io/engineio/transport/polling"
+	"github.com/googollee/go-socket.io/engineio/transport/websocket"
 )
 
 func main() {
-	// parse cmdline
-	// var srcfilepath = flag.String("srcfilepath", "", "the original dockerfile path")
-	// data.Srcfilepath = *srcfilepath
-	// fmt.Printf("x = %v", *srcfilepath)
 	loc, err := time.LoadLocation("Asia/Shanghai")
 	if err != nil {
 		glog.Errorf("failed to load location: %v", err.Error())
@@ -34,11 +36,57 @@ func main() {
 
 	// Init Gin
 	router := gin.Default()
+	router.Use(tools.Core())
+
+	// Init Websocket
+	var socketconfig = &engineio.Options{
+		PingTimeout:  7 * time.Second,
+		PingInterval: 5 * time.Second,
+		Transports: []transport.Transport{
+			&polling.Transport{
+				Client: &http.Client{
+					Timeout: time.Minute,
+				},
+				CheckOrigin: func(r *http.Request) bool {
+					return true
+				},
+			},
+			&websocket.Transport{
+				CheckOrigin: func(r *http.Request) bool {
+					return true
+				},
+			},
+		},
+	}
+	server := socketio.NewServer(socketconfig)
+	server.OnConnect("/", func(s socketio.Conn) error {
+		s.SetContext("")
+		glog.Infof("Client connected: %v", s.ID())
+
+		return nil
+	})
+	server.OnEvent("/", "data", func(s socketio.Conn, data map[string]interface{}) {
+		value, _ := data["value"].(string)
+		glog.Infof("value = %v", value)
+		go func(s socketio.Conn) {
+			for {
+				tools.GetContainerData(s, value)
+				time.Sleep(time.Second)
+			}
+		}(s)
+	})
+	go func() {
+		if err := server.Serve(); err != nil {
+			glog.Infof("socketio listen error: %s\n", err)
+		}
+	}()
+	defer server.Close()
+	router.Use(tools.Core())
+	router.GET("/socket.io/*any", gin.WrapH(server))
+	router.POST("/socket.io/*any", gin.WrapH(server))
 
 	// set the max memory of file uploaded
 	//router.MaxMultipartMemory = 8 << 30 // 8GB
-
-	router.Use(tools.Core())
 
 	// Get API information
 	router.GET("/operation", controller.OperationInfo)
@@ -70,7 +118,8 @@ func main() {
 		router.POST("/delete_pod", controller.DeletePod)
 		router.POST("/get_pod", controller.GetK8SPod)
 		router.GET("/get_namespace", controller.GetK8SNamespace)
-		router.GET("/ws", controller.GetContainerData)
+		router.POST("/gpu_share", controller.GetGPUShareData)
+		router.GET("/gpu_node", controller.GetK8SNodeGPU)
 
 		// Data of model training Opts
 		router.POST("/create_data", controller.GetModelLogData)

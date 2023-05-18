@@ -13,24 +13,28 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"regexp"
 	"runtime"
 	"sort"
 	"strconv"
 	"strings"
 	"time"
 
+	socketio "github.com/googollee/go-socket.io"
+
 	"github.com/NVIDIA/gpu-monitoring-tools/bindings/go/nvml"
 	"github.com/docker/docker/client"
 	"github.com/gin-gonic/gin"
 	"github.com/golang/glog"
-	"github.com/gorilla/websocket"
 	"github.com/shirou/gopsutil/mem"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
+	"k8s.io/client-go/tools/remotecommand"
 	"k8s.io/client-go/util/retry"
 	"k8s.io/cri-api/pkg/errors"
 	"k8s.io/metrics/pkg/client/clientset/versioned"
@@ -139,6 +143,21 @@ func DeletePod(poddata data.PodData) error {
 	return nil
 }
 
+func GetPodStatus(name string, ns string) (v1.PodPhase, error) {
+	client, err := initK8S()
+	if err != nil {
+		glog.Errorf("Failed to start k8s, the error is %v", err.Error())
+		return "", nil
+	}
+
+	pod, err := client.CoreV1().Pods(ns).Get(context.TODO(), name, metav1.GetOptions{})
+	if err != nil {
+		glog.Errorf("Failed to get pod %v status, the error is %v", name, err.Error())
+		return "", nil
+	}
+	return pod.Status.Phase, nil
+}
+
 func GetAllNamespace() ([]string, error) {
 	clientset, err := initK8S()
 	if err != nil {
@@ -177,6 +196,7 @@ func GetAllPod(namespace string) ([]map[string]interface{}, error) {
 		podInfo := map[string]interface{}{
 			"name":      pod.ObjectMeta.Name,
 			"ageInDays": ageInDays,
+			"status":    pod.Status.Phase,
 		}
 		podList = append(podList, podInfo)
 	}
@@ -467,9 +487,6 @@ func Core() gin.HandlerFunc {
 		c.Header("Access-Control-Allow-Methods", "POST, GET, OPTIONS, DELETE, PATCH, PUT")
 		c.Header("Access-Control-Expose-Headers", "Content-Length,Access-Control-Allow-Origin,Access-Control-Allow-Headers,Content-Type")
 		c.Header("Access-Control-Allow-Credentials", "True")
-		c.Header("Connection", "Upgrade")
-		c.Header("Upgrade", "websockect")
-		c.Header("Sec-WebSocket-Extensions", "permessage-deflate")
 
 		if method == "OPTIONS" {
 			c.AbortWithStatus(http.StatusOK)
@@ -555,13 +572,13 @@ func MiBToBytes(mib float64) int64 {
 	return int64(mib * math.Pow(1024, 2))
 }
 
-func GetContainerData(conn *websocket.Conn) {
+func GetContainerData(s socketio.Conn, namesapce string) {
 	clientset, err := initK8S()
 	if err != nil {
 		glog.Errorf("Failed to start k8s, the error is %v", err.Error())
 		return
 	}
-	pods, err := clientset.CoreV1().Pods("").List(context.TODO(), metav1.ListOptions{})
+	pods, err := clientset.CoreV1().Pods(namesapce).List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
 		glog.Errorf("Error getting pod list: %v", err)
 		return
@@ -573,10 +590,12 @@ func GetContainerData(conn *websocket.Conn) {
 		return
 	}
 
+	var result map[string]interface{}
+
 	for _, pod := range pods.Items {
 		for _, container := range pod.Spec.Containers {
 			// Get CPU、GPU、Mem Info
-			metrics, err := metricsClient.MetricsV1beta1().PodMetricses(pod.Namespace).Get(context.Background(), pod.Name, metav1.GetOptions{})
+			metrics, err := metricsClient.MetricsV1beta1().PodMetricses(namesapce).Get(context.Background(), pod.Name, metav1.GetOptions{})
 			if err != nil {
 				glog.Errorf("Failed to get pod metrics: %v", err.Error())
 				continue
@@ -595,7 +614,7 @@ func GetContainerData(conn *websocket.Conn) {
 					}
 					// Mem usage
 					mem := containerMetrics.Usage.Memory().Value()
-					data := map[string]interface{}{
+					result = map[string]interface{}{
 						"pod":       pod.Name,
 						"container": container.Name,
 						"cpu":       cpu,
@@ -603,18 +622,7 @@ func GetContainerData(conn *websocket.Conn) {
 						"memory":    mem,
 						"timestamp": time.Now().UnixNano() / int64(time.Millisecond),
 					}
-
-					jsonData, err := json.Marshal(data)
-					if err != nil {
-						glog.Errorf("Failed to encode JSON: %v", err.Error())
-						continue
-					}
-
-					err = conn.WriteMessage(websocket.TextMessage, jsonData)
-					if err != nil {
-						glog.Errorf("Failed to write WebSocket message: %v", err.Error())
-						break
-					}
+					s.Emit("data", result)
 				}
 			}
 		}
@@ -622,15 +630,14 @@ func GetContainerData(conn *websocket.Conn) {
 }
 
 func getGPUMetrics(containerName string) (int64, error) {
-	// cmd := exec.Command("nvidia-smi", "--query-gpu=memory.used", "--format=csv,noheader,nounits")
-	// cmd.Env = append(os.Environ(), "CUDA_VISIBLE_DEVICES="+containerName)
-	// output, err := cmd.Output()
 	output, err := ExecCommand("nvidia-smi", "--query-gpu=memory.used", "--format=csv,noheader,nounits")
 	if err != nil {
 		glog.Errorf("Failed to run gpu cmd, the error is %v", err.Error())
 		return 0, err
 	}
-	gpuUsage, err := strconv.ParseInt(strings.TrimSpace(string(output)), 10, 64)
+	cleanedStr := strings.TrimSpace(string(output))
+	cleanedStr = strings.Replace(cleanedStr, "\n", "", -1)
+	gpuUsage, err := strconv.ParseInt(strings.TrimSpace(cleanedStr), 10, 64)
 	if err != nil {
 		glog.Errorf("Failed to get gpu data, the error is %v", err.Error())
 	}
@@ -707,4 +714,128 @@ func CreateUserPath(basepath string) error {
 		}
 	}
 	return nil
+}
+
+func GetGPUData(pod data.PodData) ([]data.PodGPUData, error) {
+	client, err := initK8S()
+	if err != nil {
+		glog.Errorf("Failed to init k8s, the error is %v", err.Error())
+		return nil, err
+	}
+
+	podName := pod.Podname
+	namespace := pod.Namespace
+	containerName := "metagpu-device-plugin"
+	const tty = false
+
+	req := client.CoreV1().RESTClient().Post().
+		Resource("pods").
+		Name(podName).
+		Namespace(namespace).
+		SubResource("exec").
+		Param("container", containerName)
+
+	req.VersionedParams(&v1.PodExecOptions{
+		Command: []string{"mgctl", "get", "process"},
+		Stdin:   false,
+		Stdout:  true,
+		Stderr:  true,
+		TTY:     tty,
+	}, scheme.ParameterCodec)
+
+	config, err := getConfig()
+	if err != nil {
+		glog.Errorf("Failed to get config, the error is %v", err.Error())
+		return nil, err
+	}
+
+	var stdout, stderr bytes.Buffer
+	executor, err := remotecommand.NewSPDYExecutor(config, "POST", req.URL())
+	if err != nil {
+		glog.Errorf("Failed to send post request to k8s, the error is %v", err.Error())
+		return nil, err
+	}
+
+	err = executor.StreamWithContext(context.Background(), remotecommand.StreamOptions{
+		Stdin:  nil,
+		Stdout: &stdout,
+		Stderr: &stderr,
+	})
+	if err != nil {
+		glog.Errorf("Failed to excute exec -it command to container %v, the error is %v", containerName, err.Error())
+		return nil, err
+	}
+
+	podDataList := make([]data.PodGPUData, 0)
+	lines := strings.Split(stdout.String(), "\n")
+	for i, line := range lines {
+		if i == 0 || i == len(lines)-2 {
+			continue
+		}
+
+		cells := strings.Fields(line)
+
+		if len(cells) >= 8 {
+			mu, ma := processString(cells[11])
+			podData := data.PodGPUData{
+				Name:      cells[1],
+				Namespace: cells[3],
+				Device:    cells[5],
+				Node:      cells[7],
+				MemUse:    mu,
+				MemAll:    ma,
+				Req:       cells[17],
+			}
+
+			podDataList = append(podDataList, podData)
+		}
+	}
+	return podDataList, nil
+}
+
+func processString(input string) (string, string) {
+	regex := regexp.MustCompile(`\x1b\[[0-9;]*m`)
+	output := regex.ReplaceAllString(input, "")
+	regex = regexp.MustCompile(`\d+`)
+	matches := regex.FindAllString(output, -1)
+
+	value1 := matches[0]
+	value2 := matches[1]
+
+	return value1, value2
+}
+
+func GetGPUCount() (interface{}, error) {
+	client, err := initK8S()
+	if err != nil {
+		glog.Errorf("Failed to start k8s, the error is %v", err.Error())
+		return nil, err
+	}
+
+	nodes, err := client.CoreV1().Nodes().List(context.Background(), metav1.ListOptions{})
+	if err != nil {
+		glog.Errorf("Failed to get cluster's node, the error is %v", err.Error())
+		return nil, err
+	}
+
+	var NodeGPUs []data.NodeGPU
+
+	for _, node := range nodes.Items {
+		nodeName := node.ObjectMeta.Name
+		gpuCount := calGPUCount(&node)
+		glog.Infof("Node %s has %v GPU devices", nodeName, gpuCount)
+		NodeGPUs = append(NodeGPUs, data.NodeGPU{
+			NodeName: nodeName,
+			GPUCount: gpuCount,
+		})
+	}
+	return NodeGPUs, nil
+}
+
+func calGPUCount(node *v1.Node) int {
+	gpuCount := 0
+	if gpuList, found := node.Status.Capacity["cnvrg.io/metagpu"]; found {
+		gpuCount = int(gpuList.Value() / 100)
+	}
+	return gpuCount
 }
