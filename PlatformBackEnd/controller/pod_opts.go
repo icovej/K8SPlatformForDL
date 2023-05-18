@@ -141,6 +141,26 @@ func CreatePod(c *gin.Context) {
 		return
 	}
 
+	j := tools.NewJWT()
+	tokenString := c.GetHeader("token")
+	if tokenString == "" {
+		c.JSON(http.StatusOK, gin.H{
+			"code":    data.SUCCESS,
+			"message": "Failed to get token, because the token is empty!",
+		})
+		glog.Error("Failed to get token, because the token is empty!")
+		return
+	}
+	token, err := j.ParseToken(tokenString)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{
+			"code":    data.SUCCESS,
+			"message": fmt.Sprintf("Failed to parse token, the error is %v", err.Error()),
+		})
+		glog.Errorf("Failed to parse token, the error is %v", err.Error())
+		return
+	}
+
 	// form pod's yaml
 	newPod := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
@@ -150,15 +170,8 @@ func CreatePod(c *gin.Context) {
 		Spec: corev1.PodSpec{
 			Containers: []corev1.Container{
 				{
-					Name:    pod.Container,
-					Image:   pod.Imagename,
-					Command: []string{"/bin/bash", "-ce", "tail -f /dev/null"},
-					Env: []corev1.EnvVar{
-						{
-							Name:  "NVIDIA_DRIVER_CAPABILITIES",
-							Value: "all",
-						},
-					},
+					Name:            pod.Container,
+					Image:           pod.Imagename,
 					ImagePullPolicy: corev1.PullIfNotPresent,
 					Resources: corev1.ResourceRequirements{
 						Requests: corev1.ResourceList{
@@ -174,21 +187,21 @@ func CreatePod(c *gin.Context) {
 					},
 					VolumeMounts: []corev1.VolumeMount{
 						{
-							Name:      pod.Mountname,
+							Name:      token.Username,
 							MountPath: "/data",
 						},
 					},
 				},
 			},
 			NodeSelector: map[string]string{
-				"node-role": "master",
+				"accelerator": "nvidia",
 			},
 			Volumes: []corev1.Volume{
 				{
-					Name: pod.Mountname,
+					Name: token.Username,
 					VolumeSource: corev1.VolumeSource{
 						HostPath: &corev1.HostPathVolumeSource{
-							Path: pod.Mountpath,
+							Path: token.Path,
 							Type: (*corev1.HostPathType)(newHostPathType(corev1.HostPathDirectory)),
 						},
 					},

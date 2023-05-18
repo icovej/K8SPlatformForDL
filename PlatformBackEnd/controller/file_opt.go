@@ -23,7 +23,7 @@ func GetAllFiles(c *gin.Context) {
 		glog.Errorf("Method GetAllFiles gets invalid request payload")
 		return
 	}
-	glog.Info("Succeed to get request to get path %v all files", Path.Dir)
+	glog.Infof("Succeed to get request to get path %v all files", Path.Dir)
 
 	path := Path.Dir
 

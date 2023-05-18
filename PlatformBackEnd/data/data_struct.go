@@ -15,7 +15,7 @@ const (
 
 	// the metric of nvidia/com
 	// the value is set by Kubernetes
-	GpuMetricName = "nvidia.com/gpu"
+	GpuMetricName = "cnvrg.io/metagpu"
 
 	// the mask of parsing event file
 	MaskDelta = 0xa282ead8
@@ -120,8 +120,6 @@ type PodData struct {
 	Cpulim    string `json:"cpulim"`
 	Gpulim    string `json:"gpulim"`
 	Imagename string `json:"imagename"`
-	Mountname string `json:"mountname"`
-	Mountpath string `json:"mountpath"`
 	Nodename  string `json:"nodename"`
 	Namespace string `json:"namespace"`
 }
@@ -188,4 +186,19 @@ type DataJSON struct {
 type FileData struct {
 	Dir  []string `json:"dir"`
 	File []string `json:"file"`
+}
+
+type PodGPUData struct {
+	Name      string
+	Namespace string
+	Device    string
+	Node      string
+	MemUse    string
+	MemAll    string
+	Req       string
+}
+
+type NodeGPU struct {
+	NodeName string
+	GPUCount int
 }

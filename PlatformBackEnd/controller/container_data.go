@@ -1,43 +1,43 @@
 package controller
 
 import (
+	"PlatformBackEnd/data"
 	"PlatformBackEnd/tools"
+	"fmt"
 	"net/http"
-	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang/glog"
-	"github.com/gorilla/websocket"
 )
 
-// var upgrader = websocket.Upgrader{
-// 	ReadBufferSize:  1024,
-// 	WriteBufferSize: 1024,
-// }
-
-func GetContainerData(c *gin.Context) {
-	upGrader := websocket.Upgrader{
-		CheckOrigin: func(r *http.Request) bool {
-			return true
-		},
-	}
-	conn, err := upGrader.Upgrade(c.Writer, c.Request, nil)
+func GetGPUShareData(c *gin.Context) {
+	var pod data.PodData
+	err := c.ShouldBindJSON(&pod)
 	if err != nil {
-		glog.Errorf("Failed to upgrade WebSocket: %v", err.Error())
+		c.JSON(http.StatusOK, gin.H{
+			"code":    data.API_PARAMETER_ERROR,
+			"message": fmt.Sprintf("Method GetGPUShareData gets invalid request payload, err is %v", err.Error()),
+		})
+		glog.Errorf("Method GetGPUShareData gets invalid request payload")
+		return
+	}
+	glog.Info("Succeed to get request to get gpu_share data")
+
+	podlist, err := tools.GetGPUData(pod)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{
+			"code":    data.OPERATION_FAILURE,
+			"message": fmt.Sprintf("Failed to get gpu pod list, theerror is %v", err.Error()),
+		})
+		glog.Error("Failed to get gpu pod list, theerror is %v", err.Error())
 		return
 	}
 
-	glog.Info("Succeed to build websocket, %v", conn.RemoteAddr())
+	c.JSON(http.StatusOK, gin.H{
+		"code":    data.SUCCESS,
+		"message": "Succeed to get gpu pod lis",
+		"data":    podlist,
+	})
+	glog.Info("Succeed to get gpu pod lis")
 
-	go func(conn *websocket.Conn) {
-		for {
-			tools.GetContainerData(conn)
-			time.Sleep(time.Second)
-		}
-	}(conn)
-	// log.Println("连接建立成功", conn.RemoteAddr())
-	// for {
-	// 	tools.GetContainerData(conn)
-	// 	time.Sleep(time.Second)
-	// }
 }
