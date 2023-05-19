@@ -3,13 +3,13 @@ package controller
 import (
 	"PlatformBackEnd/data"
 	"PlatformBackEnd/tools"
+	"errors"
 	"fmt"
 	"net/http"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang/glog"
-	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -93,6 +93,7 @@ func CreatePod(c *gin.Context) {
 		glog.Errorf("Failed to parse memReq, the error is %v", err.Error())
 		return
 	}
+
 	memLim, err := resource.ParseQuantity(pod.Memlim)
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
@@ -112,6 +113,7 @@ func CreatePod(c *gin.Context) {
 		glog.Errorf("Failed to parse cpuReq, the error is %v", err.Error())
 		return
 	}
+
 	cpuLim, err := resource.ParseQuantity(pod.Cpulim)
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
@@ -131,6 +133,7 @@ func CreatePod(c *gin.Context) {
 		glog.Errorf("Failed to parse gpuReq, the error is %v", err.Error())
 		return
 	}
+	glog.Info(gpuReq)
 	gpuLim, err := resource.ParseQuantity(pod.Gpulim)
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
@@ -140,6 +143,7 @@ func CreatePod(c *gin.Context) {
 		glog.Errorf("Failed to parse gpuLim, the error is %v", err.Error())
 		return
 	}
+	glog.Info(gpuLim)
 
 	j := tools.NewJWT()
 	tokenString := c.GetHeader("token")
@@ -173,6 +177,7 @@ func CreatePod(c *gin.Context) {
 					Name:            pod.Container,
 					Image:           pod.Imagename,
 					ImagePullPolicy: corev1.PullIfNotPresent,
+					Command:         []string{"/bin/bash", "-ce", "tail -f /dev/null"}, //["/bin/sh","-ce","sleep 3600"],
 					Resources: corev1.ResourceRequirements{
 						Requests: corev1.ResourceList{
 							corev1.ResourceMemory:                   memReq,
@@ -187,8 +192,8 @@ func CreatePod(c *gin.Context) {
 					},
 					VolumeMounts: []corev1.VolumeMount{
 						{
-							Name:      token.Username,
-							MountPath: "/data",
+							Name:      "test",
+							MountPath: "/dl_work/",
 						},
 					},
 				},
@@ -198,7 +203,7 @@ func CreatePod(c *gin.Context) {
 			},
 			Volumes: []corev1.Volume{
 				{
-					Name: token.Username,
+					Name: "test",
 					VolumeSource: corev1.VolumeSource{
 						HostPath: &corev1.HostPathVolumeSource{
 							Path: token.Path,
@@ -221,11 +226,51 @@ func CreatePod(c *gin.Context) {
 		return
 	}
 
+	result := data.PodUser{
+		PodName:  pod.Podname,
+		UserName: token.Username,
+	}
+
+	r, _ := tools.CheckPodUsers()
+	r = append(r, result)
+	_ = tools.WritePodUsers(r)
+
 	c.JSON(http.StatusOK, gin.H{
 		"code":    data.SUCCESS,
-		"message": fmt.Sprintf("Succeed to create pod, its name is %v", pod_container.GetObjectMeta().GetName()),
+		"message": fmt.Sprintf("Succeed to send request to create pod %v, container %v", pod.Podname, pod_container.GetObjectMeta().GetName()),
+		"data":    result,
 	})
-	glog.Infof("Succeed to create pod %v", pod.Podname)
+	glog.Infof("Succeed to send request to create pod %v", pod.Podname)
+}
+
+func GetPodStatus(c *gin.Context) {
+	var pod data.PodData
+	err := c.ShouldBindJSON(&pod)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{
+			"code":    data.API_PARAMETER_ERROR,
+			"message": fmt.Sprintf("Method GetPodStatus gets invalid request payload, err is %v", err.Error()),
+		})
+		glog.Error("Method GetPodStatus gets invalid request payload, the error is %v", err.Error())
+		return
+	}
+
+	result, err := tools.GetPodStatus(pod.Podname, pod.Namespace)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{
+			"code":    data.OPERATION_FAILURE,
+			"message": fmt.Sprintf("Failed to get pod %v status, the error is %v", pod.Podname, err.Error()),
+		})
+		glog.Errorf("Failed to get pod %v status, the error is %v", pod.Podname, err.Error())
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"code":    data.SUCCESS,
+		"message": fmt.Sprintf("Succeed to get pod %v status", pod.Podname),
+		"data":    result,
+	})
+	glog.Infof("Succeed to get pod %v status", pod.Podname)
 }
 
 func DeletePod(c *gin.Context) {
@@ -236,7 +281,7 @@ func DeletePod(c *gin.Context) {
 			"code":    data.API_PARAMETER_ERROR,
 			"message": fmt.Sprintf("Method DeletePod gets invalid request payload, err is %v", err.Error()),
 		})
-		glog.Error("Method DeletePod gets invalid request payload, the error is %v", err.Error())
+		glog.Errorf("Method DeletePod gets invalid request payload, the error is %v", err.Error())
 		return
 	}
 	glog.Infof("Succeed to get request to delete pod %v", pod.Podname)

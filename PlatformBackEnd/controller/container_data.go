@@ -3,8 +3,10 @@ package controller
 import (
 	"PlatformBackEnd/data"
 	"PlatformBackEnd/tools"
+	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang/glog"
@@ -31,6 +33,19 @@ func GetGPUShareData(c *gin.Context) {
 		})
 		glog.Error("Failed to get gpu pod list, theerror is %v", err.Error())
 		return
+	}
+
+	d, _ := os.ReadFile(data.PodFile)
+	var pusers []data.PodUser
+	_ = json.Unmarshal(d, &pusers)
+
+	for i := 0; i < len(podlist); i++ {
+		for j := 0; j < len(pusers); j++ {
+			if pusers[j].PodName == podlist[i].Name {
+				podlist[i].Username = pusers[j].UserName
+				break
+			}
+		}
 	}
 
 	c.JSON(http.StatusOK, gin.H{

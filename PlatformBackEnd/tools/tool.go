@@ -554,6 +554,42 @@ func WriteUsers(users []data.User) error {
 	return nil
 }
 
+func CheckPodUsers() ([]data.PodUser, error) {
+	datas, err := os.ReadFile(data.PodFile)
+	if err != nil {
+		glog.Errorf("Failed to read file, the error is %v", err.Error())
+		return nil, err
+	}
+
+	var users []data.PodUser
+	if len(datas) == 0 {
+		return nil, nil
+	}
+	err = json.Unmarshal(datas, &users)
+	if err != nil {
+		glog.Errorf("Failed to unmarshal user data, the error is %v", err.Error())
+		return nil, err
+	}
+
+	return users, nil
+}
+
+func WritePodUsers(pUsers []data.PodUser) error {
+	puser_data, err := json.Marshal(pUsers)
+	if err != nil {
+		glog.Errorf("Failed to marshal user data, the error is %v", err.Error())
+		return err
+	}
+
+	err = os.WriteFile(data.PodFile, puser_data, 0644)
+	if err != nil {
+		glog.Errorf("Failed to write file, the error is %v", err.Error())
+		return err
+	}
+
+	return nil
+}
+
 func GetLastTwoChars(str string) (string, string) {
 	length := len(str)
 	if length < 2 {
@@ -838,4 +874,66 @@ func calGPUCount(node *v1.Node) int {
 		gpuCount = int(gpuList.Value() / 100)
 	}
 	return gpuCount
+}
+
+func GetClusterNodeData() ([]data.ClusterNodeData, error) {
+	client, err := initK8S()
+	if err != nil {
+		glog.Errorf("Failed to create Kubernetes client: %v\n", err)
+		return nil, err
+	}
+
+	// 获取所有节点
+	nodes, err := client.CoreV1().Nodes().List(context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		glog.Errorf("Failed to get nodes: %v\n", err.Error())
+		return nil, err
+	}
+
+	var cluster []data.ClusterNodeData
+
+	for _, node := range nodes.Items {
+		nodeName := node.ObjectMeta.Name
+		memAll := getNodeMemoryAll(&node)
+		cpuAll := getNodeCPUAll(&node)
+
+		pods, err := client.CoreV1().Pods("").List(context.TODO(), metav1.ListOptions{
+			FieldSelector: fmt.Sprintf("spec.nodeName=%s", nodeName),
+		})
+		if err != nil {
+			glog.Errorf("Failed to get pods on node %s: %v\n", nodeName, err)
+			continue
+		}
+
+		var cpuUsage, memoryUsage int64
+		for _, pod := range pods.Items {
+			for _, container := range pod.Spec.Containers {
+				cpuUsage += container.Resources.Requests.Cpu().MilliValue()
+				memoryUsage += container.Resources.Requests.Memory().Value()
+			}
+		}
+
+		c := data.ClusterNodeData{
+			NodeName:     nodeName,
+			NodeCPUAll:   float64(cpuAll) / 1000.0,
+			NodeCPUUse:   float64(cpuUsage) / 1000.0,
+			NodeMemAllGB: float64(memAll) / (1024 * 1024 * 1024),
+			NodeMemUseGB: float64(memoryUsage) / (1024 * 1024 * 1024),
+			NodeMemAllMB: float64(memAll) / (1024 * 1024),
+			NodeMemUseMB: float64(memoryUsage) / (1024 * 1024),
+		}
+
+		cluster = append(cluster, c)
+	}
+	return cluster, nil
+}
+
+func getNodeMemoryAll(node *v1.Node) int64 {
+	memUsage := node.Status.Capacity.Memory().Value()
+	return memUsage
+}
+
+func getNodeCPUAll(node *v1.Node) int64 {
+	cpuUsage := node.Status.Capacity.Cpu().MilliValue()
+	return cpuUsage
 }

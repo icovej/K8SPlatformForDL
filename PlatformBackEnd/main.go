@@ -5,16 +5,11 @@ import (
 	"PlatformBackEnd/data"
 	"PlatformBackEnd/tools"
 	"flag"
-	"net/http"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang/glog"
 	socketio "github.com/googollee/go-socket.io"
-	"github.com/googollee/go-socket.io/engineio"
-	"github.com/googollee/go-socket.io/engineio/transport"
-	"github.com/googollee/go-socket.io/engineio/transport/polling"
-	"github.com/googollee/go-socket.io/engineio/transport/websocket"
 )
 
 func main() {
@@ -27,38 +22,21 @@ func main() {
 	var logdir = flag.String("logdir", "", "The path to save glog")
 	flag.Lookup("log_dir").Value.Set(*logdir)
 	_ = flag.String("userport", ":8080", "the port to listen the platform")
+	_ = flag.String("dockerfiles_path", "/home/gpu-server/all_test/biyesheji/PlatformBackEnd/dockerfiles", "the file to store the dockerfile")
 
 	flag.Parse()
 	defer glog.Flush()
 	glog.Info("Succeed to start platform")
 
 	_ = tools.CreateFile(data.UserFile)
+	_ = tools.CreateFile(data.PodFile)
 
 	// Init Gin
 	router := gin.Default()
 	router.Use(tools.Core())
 
 	// Init Websocket
-	var socketconfig = &engineio.Options{
-		PingTimeout:  7 * time.Second,
-		PingInterval: 5 * time.Second,
-		Transports: []transport.Transport{
-			&polling.Transport{
-				Client: &http.Client{
-					Timeout: time.Minute,
-				},
-				CheckOrigin: func(r *http.Request) bool {
-					return true
-				},
-			},
-			&websocket.Transport{
-				CheckOrigin: func(r *http.Request) bool {
-					return true
-				},
-			},
-		},
-	}
-	server := socketio.NewServer(socketconfig)
+	server := socketio.NewServer(data.Socketconfig)
 	server.OnConnect("/", func(s socketio.Conn) error {
 		s.SetContext("")
 		glog.Infof("Client connected: %v", s.ID())
@@ -96,6 +74,7 @@ func main() {
 	router.GET("/getuser_notoken", controller.GetUserInfo_NoToken)
 	router.POST("/modify_user", controller.ModifyUser)
 	router.Static("/logs", flag.Lookup("log_dir").Value.String())
+	router.Static("/dockerfiles", flag.Lookup("dockerfiles_path").Value.String())
 
 	api := router.Group("/api")
 	api.Use(tools.JWTAuth())
@@ -110,16 +89,18 @@ func main() {
 		router.POST("/create_dir", controller.CreateDir)
 		router.POST("/delete_dir", controller.DeleteDir)
 
-		// Create Image
+		// Image Opts
 		router.POST("/image", controller.CreateImage)
 
 		// Pod Opts
 		router.POST("/create_pod", controller.CreatePod)
 		router.POST("/delete_pod", controller.DeletePod)
 		router.POST("/get_pod", controller.GetK8SPod)
-		router.GET("/get_namespace", controller.GetK8SNamespace)
+		router.POST("/status_pod", controller.GetPodStatus)
 		router.POST("/gpu_share", controller.GetGPUShareData)
+		router.GET("/get_namespace", controller.GetK8SNamespace)
 		router.GET("/gpu_node", controller.GetK8SNodeGPU)
+		router.GET("/node_data", controller.GetClusterNodeData)
 
 		// Data of model training Opts
 		router.POST("/create_data", controller.GetModelLogData)
