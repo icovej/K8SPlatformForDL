@@ -1,0 +1,100 @@
+syntax = "proto3";
+
+package device.v1;
+
+service DeviceService{
+  rpc GetGpuContainers (GetGpuContainersRequest) returns (GetGpuContainersResponse){}
+  rpc StreamGpuContainers (StreamGpuContainersRequest) returns (stream StreamGpuContainersResponse){}
+  rpc GetDevices(GetDevicesRequest) returns (GetDevicesResponse){}
+  rpc KillGpuProcess(KillGpuProcessRequest) returns (KillGpuProcessResponse){}
+  rpc PatchConfigs(PatchConfigsRequest) returns (PatchConfigsResponse){}
+  rpc GetMetaDeviceInfo(GetMetaDeviceInfoRequest) returns (GetMetaDeviceInfoResponse){}
+
+  rpc PingServer(PingServerRequest) returns (PingServerResponse){}
+
+}
+
+
+
+message DeviceProcess{
+  string uuid = 1;
+  uint32 pid = 2;
+  uint64 memory = 3;
+  string cmdline = 4;
+  string user = 5;
+  string container_id = 6;
+  uint32 gpu_utilization = 10;
+
+}
+
+message ContainerDevice{
+  Device device = 1;
+  int32 allocated_shares = 2;
+}
+
+message GpuContainer{
+  string container_id = 1;
+  string container_name = 2;
+  string pod_id = 3;
+  string pod_namespace = 4;
+  int64  metagpu_requests = 5;
+  string resource_name = 6;
+  string node_name = 7;
+  repeated DeviceProcess device_processes = 8;
+  repeated ContainerDevice container_devices = 9;
+}
+
+message Device{
+  string uuid = 1;
+  uint32 index = 2;
+  uint32 shares = 3;
+  uint32 gpu_utilization = 4;
+  uint32 memory_utilization = 5;
+  uint64 memory_total = 6;
+  uint64 memory_free = 7;
+  uint64 memory_used = 8;
+  uint64 memory_share_size = 9;
+  string resource_name = 10;
+  string node_name = 11;
+}
+
+message StreamGpuContainersRequest{
+  string pod_id = 1;
+}
+message StreamGpuContainersResponse{
+  string visibility_level = 1;
+  repeated GpuContainer gpu_containers = 2;
+}
+
+message GetGpuContainersRequest{
+  string pod_id = 1;
+}
+message GetGpuContainersResponse{
+  string visibility_level = 1;
+  repeated GpuContainer gpu_containers = 2;
+}
+
+message KillGpuProcessRequest{
+  uint32 pid = 1;
+}
+message KillGpuProcessResponse{}
+
+message PatchConfigsRequest{
+  int32 meta_gpus = 1;
+}
+message PatchConfigsResponse{}
+
+message GetDevicesRequest{}
+message GetDevicesResponse{
+  map<string, Device> device = 1;
+}
+
+message GetMetaDeviceInfoRequest{}
+message GetMetaDeviceInfoResponse{
+  string node = 1;
+  map<string, string> metadata = 2;
+  repeated Device devices = 3;
+}
+
+message PingServerRequest{}
+message PingServerResponse{}
