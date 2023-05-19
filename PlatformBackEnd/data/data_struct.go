@@ -5,13 +5,20 @@ import (
 	"errors"
 	"hash/crc32"
 	"io"
+	"net/http"
+	"time"
 
 	"github.com/golang-jwt/jwt/v4"
+	"github.com/googollee/go-socket.io/engineio"
+	"github.com/googollee/go-socket.io/engineio/transport"
+	"github.com/googollee/go-socket.io/engineio/transport/polling"
+	"github.com/googollee/go-socket.io/engineio/transport/websocket"
 )
 
 const (
 	// user data file
 	UserFile = "User.json"
+	PodFile  = "Pod.json"
 
 	// the metric of nvidia/com
 	// the value is set by Kubernetes
@@ -52,6 +59,26 @@ var (
 	Crc32c             = crc32.MakeTable(crc32.Castagnoli)
 	// the basic path of dockerfile
 	Srcfilepath = "/home/gpu-server/all_test/biyesheji/PlatformBackEnd/dockerfile"
+
+	Socketconfig = &engineio.Options{
+		PingTimeout:  7 * time.Second,
+		PingInterval: 5 * time.Second,
+		Transports: []transport.Transport{
+			&polling.Transport{
+				Client: &http.Client{
+					Timeout: time.Minute,
+				},
+				CheckOrigin: func(r *http.Request) bool {
+					return true
+				},
+			},
+			&websocket.Transport{
+				CheckOrigin: func(r *http.Request) bool {
+					return true
+				},
+			},
+		},
+	}
 )
 
 // Api information structure
@@ -62,57 +89,22 @@ type Operation struct {
 }
 
 // Image data from the front-end
-//
-// Dstpath: the path to save dockerfile of user
-// Osversion: for example, ubuntu:20.04
-// Pythonversion: for example, python3.8-slim-buster
-// Imagearray: user can select them at the front-end
-// Imagename: the image name of which is built from user by using the dockerfile
 type ImageData struct {
-	Dstpath       string   `json:"dstpath"`
-	Osversion     string   `json:"osversion"`
-	Pythonversion string   `json:"pythonversion"`
-	Imagearray    []string `json:"Imagearray"`
-	Imagename     string   `json:"Imagename"`
+	Dockerfile string `json:"dockerfile"`
+	Dstpath    string `json:"dstpath"`
+	Imagename  string `json:"Imagename"`
 }
 
 // Dir data from the front-end
-//
-// Dir: the path from user to find a path that is empty or enough to use
-// Depth: the arg from user to combine the command "du"
 type DirData struct {
 	Dir   string `json:"dir"`
 	Depth string `json:"max-depth"`
 }
 
 // Pod data from the front-end
-// Nowadays(2023.3.23) it can only support to build one pod with only one container
-// In future, we'll update it to support multiple containers
-//
-// Podname: selected from user
-// Container: selected from user
-// Memory: this value is decided by your host machine, even though we'll check if it's valid,
-// we still hope you can make sure the value you choose is less that the avaliable of your
-// machine before creating pod. The unit is the same as Kubernetes.
-// Cpu: this value's unit is core. For example, you choose CPU=4, means 4 CPU cores will be
-// used in your work.
-// Gpu: this value means which graphics card you want to use. For example, Gpu=0, means you will
-// use /dev/nvidia0. We are currently working on how to use a certain graphics card, in fact,
-// we have finished writing code, but for some reason, we haven't tested it yet. In future,
-// we'll make it. TODO:
-// XXXlim: there are three values to limit mem, GPU and CPU. In fact, Kubernetes's not forcing us
-// to fill out them, but we think the most important thing of multi-model training is safety，
-// so, we need you to do them. The regulation is the same as Kubernetes
-// Mountname: the same as Kubernetes
-// Mountpath: the path which admin give you
-// Nodename: the node on which you want to create your pod. In future, we'll make it as the path boung
-// with your account. TODO:
-// Namespace: the namespace in which you want to create your pod. In future, we'll make it as the path boung
-// with your account. The reasons why we want to bind it with account is that maybe in future, users want
-// to use PV, PVC, SC, etc. It's easier to manage everything in the same namespace.  TODO:
 type PodData struct {
 	Podname   string `json:"podname"`
-	Container string `json:"container_name"`
+	Container string `json:"container"`
 	Memory    string `json:"memory"`
 	Cpu       string `json:"cpu"`
 	Gpu       string `json:"gpu"`
@@ -120,7 +112,6 @@ type PodData struct {
 	Cpulim    string `json:"cpulim"`
 	Gpulim    string `json:"gpulim"`
 	Imagename string `json:"imagename"`
-	Nodename  string `json:"nodename"`
 	Namespace string `json:"namespace"`
 }
 
@@ -131,8 +122,6 @@ type Reader struct {
 }
 
 // Events data structure
-//
-// Just like tensorboard, we need logs' path to read data
 type ModelLogData struct {
 	Logdir string `json:"logdir"`
 }
@@ -189,6 +178,7 @@ type FileData struct {
 }
 
 type PodGPUData struct {
+	Username  string
 	Name      string
 	Namespace string
 	Device    string
@@ -201,4 +191,18 @@ type PodGPUData struct {
 type NodeGPU struct {
 	NodeName string
 	GPUCount int
+}
+
+type PodUser struct {
+	PodName  string
+	UserName string
+}
+type ClusterNodeData struct {
+	NodeName     string
+	NodeCPUAll   float64
+	NodeCPUUse   float64
+	NodeMemAllGB float64
+	NodeMemUseGB float64
+	NodeMemAllMB float64
+	NodeMemUseMB float64
 }
