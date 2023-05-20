@@ -13,12 +13,14 @@ import (
 	"github.com/googollee/go-socket.io/engineio/transport"
 	"github.com/googollee/go-socket.io/engineio/transport/polling"
 	"github.com/googollee/go-socket.io/engineio/transport/websocket"
+	v1 "k8s.io/api/core/v1"
 )
 
 const (
 	// user data file
-	UserFile = "User.json"
-	PodFile  = "Pod.json"
+	UserFile      = "User.json"
+	PodFile       = "Pod.json"
+	NamespaceFile = "Ns.json"
 
 	// the metric of nvidia/com
 	// the value is set by Kubernetes
@@ -103,16 +105,34 @@ type DirData struct {
 
 // Pod data from the front-end
 type PodData struct {
-	Podname   string `json:"podname"`
-	Container string `json:"container"`
-	Memory    string `json:"memory"`
-	Cpu       string `json:"cpu"`
-	Gpu       string `json:"gpu"`
-	Memlim    string `json:"memlim"`
-	Cpulim    string `json:"cpulim"`
-	Gpulim    string `json:"gpulim"`
-	Imagename string `json:"imagename"`
+	Podname   string  `json:"podname"`
+	Container string  `json:"container"`
+	Memory    string  `json:"memory"`
+	Cpu       string  `json:"cpu"`
+	Gpu       string  `json:"gpu"`
+	Memlim    string  `json:"memlim"`
+	Cpulim    string  `json:"cpulim"`
+	Gpulim    string  `json:"gpulim"`
+	Imagename string  `json:"imagename"`
+	Namespace string  `json:"namespace"`
+	CPort     []int32 `json:"cport"`
+	HPort     []int32 `json:"hport"`
+}
+
+type PodInfo struct {
+	Name      string
+	AgeInDays int
+	Status    v1.PodPhase
+}
+
+type NsData struct {
 	Namespace string `json:"namespace"`
+	Days      int    `json:"days"`
+}
+
+type PodTimeDelete struct {
+	NsData
+	Time int
 }
 
 // Used to read event file

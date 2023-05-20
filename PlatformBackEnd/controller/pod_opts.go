@@ -177,7 +177,24 @@ func CreatePod(c *gin.Context) {
 					Name:            pod.Container,
 					Image:           pod.Imagename,
 					ImagePullPolicy: corev1.PullIfNotPresent,
-					Command:         []string{"/bin/bash", "-ce", "tail -f /dev/null"}, //["/bin/sh","-ce","sleep 3600"],
+					Ports: []corev1.ContainerPort{
+						{
+							Name:          "http",
+							ContainerPort: pod.CPort[0],
+							HostPort:      pod.HPort[0],
+						},
+						{
+							Name:          "https",
+							ContainerPort: pod.CPort[1],
+							HostPort:      pod.HPort[1],
+						},
+						{
+							Name:          "ssh",
+							ContainerPort: pod.CPort[2],
+							HostPort:      pod.HPort[2],
+						},
+					},
+					Command: []string{"/bin/bash", "-ce", "tail -f /dev/null"}, //["/bin/sh","-ce","sleep 3600"],
 					Resources: corev1.ResourceRequirements{
 						Requests: corev1.ResourceList{
 							corev1.ResourceMemory:                   memReq,
@@ -286,7 +303,7 @@ func DeletePod(c *gin.Context) {
 	}
 	glog.Infof("Succeed to get request to delete pod %v", pod.Podname)
 
-	err = tools.DeletePod(pod)
+	err = tools.DeletePod(pod.Namespace, pod.Podname)
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"code":    data.OPERATION_FAILURE,

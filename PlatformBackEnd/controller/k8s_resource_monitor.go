@@ -98,3 +98,37 @@ func GetClusterNodeData(c *gin.Context) {
 	})
 	glog.Info("Succeed to get node data")
 }
+
+func CreateNamespace(c *gin.Context) {
+	var ns data.NsData
+	err := c.ShouldBindJSON(&ns)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{
+			"code":    data.API_PARAMETER_ERROR,
+			"message": fmt.Sprintf("Method CreateNamespace gets invalid request payload, err is %v", err.Error()),
+		})
+		glog.Errorf("Method CreateNamespace gets invalid request payload, the error is %v", err.Error())
+		return
+	}
+	glog.Infof("Succeed to get request to create namespace %v", ns.Namespace)
+
+	_, err = tools.CreateNamespace(ns.Namespace)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{
+			"code":    data.OPERATION_FAILURE,
+			"message": fmt.Sprintf("Failed to cerate namespace %v, the error is %v", ns.Namespace, err.Error()),
+		})
+		glog.Errorf("Failed to cerate namespace %v, the error is %v", ns.Namespace, err.Error())
+		return
+	}
+
+	r, _ := tools.CheckNs()
+	r = append(r, ns)
+	_ = tools.WriteNs(r)
+
+	c.JSON(http.StatusOK, gin.H{
+		"code":    data.SUCCESS,
+		"message": fmt.Sprintf("Scceed to create namespace %v", ns.Namespace),
+	})
+	glog.Infof("Scceed to create namespace %v", ns.Namespace)
+}
