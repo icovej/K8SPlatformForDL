@@ -127,16 +127,16 @@ func CreatePod(poddata data.PodData, pod *v1.Pod) (*v1.Pod, error) {
 	return pod_container, nil
 }
 
-func DeletePod(poddata data.PodData) error {
+func DeletePod(namespace string, podname string) error {
 	client, err := initK8S()
 	if err != nil {
 		glog.Errorf("Failed to start k8s, the error is %v", err.Error())
 		return err
 	}
 
-	err = client.CoreV1().Pods(poddata.Namespace).Delete(context.Background(), poddata.Podname, metav1.DeleteOptions{})
+	err = client.CoreV1().Pods(namespace).Delete(context.Background(), podname, metav1.DeleteOptions{})
 	if err != nil {
-		glog.Errorf("Failed to delete pod %v", poddata.Podname)
+		glog.Errorf("Failed to delete pod %v", podname)
 		return err
 	}
 
@@ -177,7 +177,7 @@ func GetAllNamespace() ([]string, error) {
 	return nameSpaces, nil
 }
 
-func GetAllPod(namespace string) ([]map[string]interface{}, error) {
+func GetAllPod(namespace string) ([]data.PodInfo, error) {
 	clientset, err := initK8S()
 	if err != nil {
 		glog.Errorf("Failed to start k8s, the error is %v", err.Error())
@@ -189,14 +189,15 @@ func GetAllPod(namespace string) ([]map[string]interface{}, error) {
 		glog.Errorf("Failed to list ns, the error is %v", err.Error())
 	}
 
-	podList := make([]map[string]interface{}, 0, len(pods.Items))
+	var podList []data.PodInfo
+
 	for _, pod := range pods.Items {
 		createdTime := pod.GetCreationTimestamp().Time
 		ageInDays := int(time.Since(createdTime).Hours() / 24)
-		podInfo := map[string]interface{}{
-			"name":      pod.ObjectMeta.Name,
-			"ageInDays": ageInDays,
-			"status":    pod.Status.Phase,
+		podInfo := data.PodInfo{
+			Name:      pod.ObjectMeta.Name,
+			AgeInDays: ageInDays,
+			Status:    pod.Status.Phase,
 		}
 		podList = append(podList, podInfo)
 	}
@@ -590,6 +591,42 @@ func WritePodUsers(pUsers []data.PodUser) error {
 	return nil
 }
 
+func CheckNs() ([]data.NsData, error) {
+	datas, err := os.ReadFile(data.NamespaceFile)
+	if err != nil {
+		glog.Errorf("Failed to read file, the error is %v", err.Error())
+		return nil, err
+	}
+
+	var users []data.NsData
+	if len(datas) == 0 {
+		return nil, nil
+	}
+	err = json.Unmarshal(datas, &users)
+	if err != nil {
+		glog.Errorf("Failed to unmarshal user data, the error is %v", err.Error())
+		return nil, err
+	}
+
+	return users, nil
+}
+
+func WriteNs(pUsers []data.NsData) error {
+	puser_data, err := json.Marshal(pUsers)
+	if err != nil {
+		glog.Errorf("Failed to marshal user data, the error is %v", err.Error())
+		return err
+	}
+
+	err = os.WriteFile(data.NamespaceFile, puser_data, 0644)
+	if err != nil {
+		glog.Errorf("Failed to write file, the error is %v", err.Error())
+		return err
+	}
+
+	return nil
+}
+
 func GetLastTwoChars(str string) (string, string) {
 	length := len(str)
 	if length < 2 {
@@ -936,4 +973,31 @@ func getNodeMemoryAll(node *v1.Node) int64 {
 func getNodeCPUAll(node *v1.Node) int64 {
 	cpuUsage := node.Status.Capacity.Cpu().MilliValue()
 	return cpuUsage
+}
+
+func CreateNamespace(ns string) (*v1.Namespace, error) {
+	client, err := initK8S()
+	if err != nil {
+		glog.Errorf("Failed to start k8s, the error is %v", err.Error())
+		return nil, err
+	}
+	namespace := &v1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: ns, // 替换为您要创建的 Namespace 的名称
+		},
+	}
+	createdNamespace, _ := client.CoreV1().Namespaces().Create(context.TODO(), namespace, metav1.CreateOptions{})
+	return createdNamespace, nil
+}
+
+func DeletPodInTime() {
+	result, _ := CheckNs()
+	for _, ns := range result {
+		podList, _ := GetAllPod(ns.Namespace)
+		for _, pod := range podList {
+			if pod.AgeInDays >= ns.Days {
+				_ = DeletePod(ns.Namespace, pod.Name)
+			}
+		}
+	}
 }
